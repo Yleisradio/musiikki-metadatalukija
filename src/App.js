@@ -3,18 +3,14 @@ import { parseBlob } from "music-metadata-browser";
 import { useDropzone } from "react-dropzone";
 import { Buffer } from "buffer";
 import JsonView from "react18-json-view";
-import "react18-json-view/src/style.css";   // one‑liner default theme
+import "react18-json-view/src/style.css";
 import { romanize } from "@romanize/korean";
 import "./App.css";
 
 window.Buffer = Buffer;
 
-// 🔤 Does the string contain Hangul syllables?
 const hasHangul = (str = "") => /[\uAC00-\uD7AF]/.test(str);
-
-// 🔤 Return romanised form or null
-const romanizeIfHangul = (str = "") =>
-    hasHangul(str) ? romanize(str, { system: "RR" }) : null;
+const romanizeIfHangul = (str = "") => hasHangul(str) ? romanize(str, { system: "RR" }) : null;
 
 function App() {
     const [fileName, setFileName] = useState("");
@@ -40,9 +36,6 @@ function App() {
     });
     const [artistDetails, setArtistDetails] = useState([]);
     const [artistJsonVisibility, setArtistJsonVisibility] = useState({});
-    const [activeTab, setActiveTab] = useState("default");
-    const [musicfetchData, setMusicfetchData] = useState(null);
-    const [urlInput, setUrlInput] = useState('');
 
     const toggleArtistJson = (id) => {
         setArtistJsonVisibility(prev => ({
@@ -52,11 +45,9 @@ function App() {
     };
 
     const fetchMusicBrainzData = async (isrc) => {
-        if (!isrc || isrc === "Ei tietoa") return;
+        if (!isrc || isrc === "Unknown ISRC") return;
         try {
-            const response = await fetch(
-                `https://musicbrainz.org/ws/2/recording/?query=isrc:${isrc}&fmt=json`
-            );
+            const response = await fetch(`https://musicbrainz.org/ws/2/recording/?query=isrc:${isrc}&fmt=json`);
             if (!response.ok) throw new Error("Failed to fetch MusicBrainz data");
             const data = await response.json();
 
@@ -65,7 +56,7 @@ function App() {
             const artistIds = [];
             data.recordings?.forEach((recording) => {
                 recording["artist-credit"]?.forEach((credit) => {
-                    if (credit.artist && credit.artist.id) {
+                    if (credit.artist?.id) {
                         artistIds.push(credit.artist.id);
                     }
                 });
@@ -94,62 +85,10 @@ function App() {
         }
     };
 
-    const fetchMusicfetchData = async (isrc) => {
-        try {
-            const response = await fetch(`/.netlify/functions/getMusicfetchTrack?isrc=${isrc}`);
-            const data = await response.json();
-            console.log("Musicfetch result:", data);
-            setMusicfetchData(data);
-        } catch (err) {
-            console.error("Error fetching from Musicfetch function:", err);
-        }
-    };
-
-    const handleFetchByUrl = async () => {
-        if (!urlInput) return;
-
-        try {
-            setAlbumArt(null);
-            setCleanData({
-                title: "",
-                titleId: "",
-                performers: "",
-                songwriters: [],
-                year: "",
-                isrc: "",
-                album: "",
-                albumId: "",
-                trackNumber: "",
-                genre: "",
-                label: "",
-                durationFormatted: "",
-                fileSize: ""
-            });
-            setMusicBrainzData(null);
-            setArtistDetails([]);
-
-            const res = await fetch(
-                `/.netlify/functions/getMusicfetchTrackByUrl?url=${encodeURIComponent(urlInput)}`
-            );
-            const data = await res.json();
-
-            if (res.ok) {
-                setMusicfetchData(data.result);
-                setMetadata({ via: "url" });
-                setFileName("URL-haku");
-            } else {
-                setMusicfetchData({ error: data.error || 'Tuntematon virhe' });
-            }
-        } catch (err) {
-            setMusicfetchData({ error: 'Virhe haettaessa Musicfetchiltä' });
-        }
-    };
-
     const handleFileUpload = useCallback(async (file) => {
         if (!file) return;
 
         setFileName(file.name);
-        setUrlInput("");
         setAlbumArt(null);
         setMetadata(null);
         setMusicBrainzData(null);
@@ -166,14 +105,13 @@ function App() {
                 setAlbumArt(imageUrl);
             }
 
-            const title = metadata.common?.title || "Ei tietoa";
-            const performers = metadata.common?.artists?.join(", ") || metadata.common?.artist || "Ei tietoa";
+            const title = metadata.common?.title || "Unknown title";
+            const performers = metadata.common?.artists?.join(", ") || metadata.common?.artist || "Unknown performer";
 
             let songwriterRaw = "";
             if (metadata.native) {
                 for (const format in metadata.native) {
-                    const nativeTags = metadata.native[format];
-                    for (const tag of nativeTags) {
+                    for (const tag of metadata.native[format]) {
                         if (tag.id.toLowerCase() === "©wrt" && typeof tag.value === "string") {
                             songwriterRaw = tag.value;
                             break;
@@ -182,16 +120,17 @@ function App() {
                     if (songwriterRaw) break;
                 }
             }
+
             if (!songwriterRaw && metadata.common?.composer?.[0]) {
                 songwriterRaw = metadata.common.composer[0];
             }
+
             const songwriters = songwriterRaw ? songwriterRaw.split(/,|&/).map(s => s.trim()).filter(Boolean) : [];
 
             let year = metadata.common?.year;
             if (!year && metadata.native) {
                 for (const format in metadata.native) {
-                    const nativeTags = metadata.native[format];
-                    for (const tag of nativeTags) {
+                    for (const tag of metadata.native[format]) {
                         const tagId = tag.id.toLowerCase();
                         if (tagId === "cprt" && typeof tag.value === "string") {
                             const match = tag.value.match(/(\d{4})/);
@@ -208,13 +147,12 @@ function App() {
                 const match = metadata.common.copyright.match(/(\d{4})/);
                 if (match) year = match[1];
             }
-            if (!year) year = "Ei tietoa";
+            if (!year) year = "Unknown year";
 
             let isrc = metadata.common?.isrc || "";
             if (!isrc && metadata.native) {
                 for (const format in metadata.native) {
-                    const nativeTags = metadata.native[format];
-                    for (const tag of nativeTags) {
+                    for (const tag of metadata.native[format]) {
                         const tagId = tag.id.toLowerCase();
                         if (tagId === "xid " && typeof tag.value === "string") {
                             const match = tag.value.match(/isrc:([A-Z0-9]+)/i);
@@ -230,21 +168,19 @@ function App() {
                     }
                 }
             }
-            if (!isrc) isrc = "Ei tietoa";
+            if (!isrc) isrc = "Unknown ISRC";
 
-            const album = metadata.common?.album || "Ei tietoa";
+            const album = metadata.common?.album || "Unknown album";
             const track = metadata.common?.track;
-            const trackNumber = track?.no?.toString() || "Ei tietoa";
-
+            const trackNumber = track?.no?.toString() || "Unknown";
             const genre = Array.isArray(metadata.common?.genre)
                 ? metadata.common.genre.join(", ")
-                : metadata.common?.genre || "Ei tietoa";
+                : metadata.common?.genre || "Unknown genre";
 
             let label = "";
             if (metadata.native) {
                 for (const format in metadata.native) {
-                    const nativeTags = metadata.native[format];
-                    for (const tag of nativeTags) {
+                    for (const tag of metadata.native[format]) {
                         const tagId = tag.id.toLowerCase();
                         if (tagId === "cprt" && typeof tag.value === "string") {
                             label = tag.value.replace(/^(?:℗|©)?\s*\d{4}\s*/i, "").trim();
@@ -260,14 +196,13 @@ function App() {
             if (!label && metadata.common?.copyright) {
                 label = metadata.common.copyright.replace(/^(?:℗|©)?\s*\d{4}\s*/i, "").trim();
             }
-            if (!label) label = "Ei tietoa";
+            if (!label) label = "Unknown label";
 
             let albumId = "";
             let titleId = "";
             if (metadata.native) {
                 for (const format in metadata.native) {
-                    const nativeTags = metadata.native[format];
-                    for (const tag of nativeTags) {
+                    for (const tag of metadata.native[format]) {
                         const tagId = tag.id.toLowerCase();
                         if (tagId === "plid" && typeof tag.value === "number") {
                             albumId = tag.value.toString();
@@ -311,18 +246,15 @@ function App() {
                 }
             };
 
-            const cleanedMetadata = JSON.parse(
-                JSON.stringify(combinedMetadata, (key, value) => {
-                    if (key === "data" && typeof value === "object") {
-                        return "Image binary data hidden for convenience";
-                    }
-                    return value;
-                })
-            );
+            const cleanedMetadata = JSON.parse(JSON.stringify(combinedMetadata, (key, value) => {
+                if (key === "data" && typeof value === "object") {
+                    return "Image binary data hidden for convenience";
+                }
+                return value;
+            }));
 
             setMetadata(cleanedMetadata);
             fetchMusicBrainzData(isrc);
-            fetchMusicfetchData(isrc);
         } catch (error) {
             console.error("Error reading metadata:", error);
         }
@@ -335,7 +267,7 @@ function App() {
             }
         },
         accept: "audio/*",
-        multiple: false,
+        multiple: false
     });
 
     return (
@@ -356,46 +288,23 @@ function App() {
                     {isDragActive ? (
                         <p>Pudota audiotiedosto tähän...</p>
                     ) : (
-                        <p>Pudota audiotiedosto tai klikkaa tästä...</p>
+                        <p>Pudota audiotiedosto tai klikkaa tästä ja valitse.</p>
                     )}
                 </div>
-                <br />
-                <input
-                    type="text"
-                    className="url-input"
-                    placeholder="Liitä linkki..."
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                />
-                <button onClick={handleFetchByUrl}>Musicfetch-haku</button>
-
             </div>
 
             {fileName && <p><strong>Tiedosto:</strong> {fileName}</p>}
-            <div className="tab-buttons">
-                <button
-                    className={activeTab === "default" ? "active" : ""}
-                    onClick={() => setActiveTab("default")}
-                >
-                    Oletusnäkymä
-                </button>
-                <button
-                    className={activeTab === "musicfetch" ? "active" : ""}
-                    onClick={() => setActiveTab("musicfetch")}
-                >
-                    Musicfetch-näkymä
-                </button>
-            </div>
-            {metadata && activeTab === "default" && (
+
+            {metadata && (
                 <div className="columns-wrapper">
 
-                    {/* Yleistiedot and Artist Info (Left Column) */}
+                    {/* Left column: Yleistiedot + ArtistInfo */}
                     <div className="left-column">
-
-                        {/* Yleistiedot Panel */}
                         <div className="panel clean-metadata">
                             <h2>Yleistiedot</h2>
+                            {/* Left and Right inside clean panel */}
                             <div className="metadata-columns">
+                                {/* Left */}
                                 <div className="metadata-column">
                                     <p><strong>Kappale:</strong><br />
                                         {cleanData.titleId ? (
@@ -407,7 +316,6 @@ function App() {
                                             <div className="romanized">{romanizeIfHangul(cleanData.title)}</div>
                                         )}
                                     </p>
-
                                     <div className="sub-info">
                                         <p><strong>Albumilta:</strong><br />
                                             {cleanData.albumId ? (
@@ -420,7 +328,6 @@ function App() {
                                             )}
                                         </p>
                                     </div>
-
                                     <p><strong>Uranumero:</strong><br />{cleanData.trackNumber}</p>
                                     <p><strong>Levy-yhtiö:</strong><br />{cleanData.label}</p>
                                     <p><strong>Julkaisuvuosi:</strong><br />{cleanData.year}</p>
@@ -428,6 +335,7 @@ function App() {
                                     <p><strong>Tiedostokoko:</strong><br />{cleanData.fileSize}</p>
                                 </div>
 
+                                {/* Right */}
                                 <div className="metadata-column">
                                     <p><strong>Esittäjät:</strong><br />
                                         {cleanData.performers
@@ -462,47 +370,40 @@ function App() {
                             </div>
                         </div>
 
-                        {/* If we have fetched expanded artist details, display them */}
+                        {/* Artist Info */}
                         {artistDetails.length > 0 && (
                             <div>
                                 <h3>MusicBrainz-metadata (esittäjät)</h3>
-                                {artistDetails.length > 0 && (
-                                    <div>
-                                        {artistDetails.map((artist) => (
-                                            <div key={artist.id} className="panel artist-info">
-                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                    <h3>{artist.name}</h3>
-                                                    <button
-                                                        className="toggle-button"
-                                                        onClick={() => toggleArtistJson(artist.id)}
-                                                    >
-                                                        {artistJsonVisibility[artist.id] ? "Tekstinäkymä" : "JSON-näkymä"}
-                                                    </button>
-                                                </div>
-                                                {artistJsonVisibility[artist.id] ? (
-                                                    <JsonView
-                                                        src={artist}
-                                                        name={false}
-                                                        collapsed={2}
-                                                        displayDataTypes={false}
-                                                        enableClipboard={false}
-                                                        style={{ fontSize: "13px" }}
-                                                    />
-                                                ) : (
-                                                    <pre style={{ fontSize: "13px" }}>{JSON.stringify(artist, null, 2)}</pre>
-                                                )}
-                                            </div>
-                                        ))}
+                                {artistDetails.map((artist) => (
+                                    <div key={artist.id} className="panel artist-info">
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <h3>{artist.name}</h3>
+                                            <button
+                                                className="toggle-button"
+                                                onClick={() => toggleArtistJson(artist.id)}
+                                            >
+                                                {artistJsonVisibility[artist.id] ? "Tekstinäkymä" : "JSON-näkymä"}
+                                            </button>
+                                        </div>
+                                        {artistJsonVisibility[artist.id] ? (
+                                            <JsonView
+                                                src={artist}
+                                                name={false}
+                                                collapsed={2}
+                                                displayDataTypes={false}
+                                                enableClipboard={false}
+                                                style={{ fontSize: "13px" }}
+                                            />
+                                        ) : (
+                                            <pre style={{ fontSize: "13px" }}>{JSON.stringify(artist, null, 2)}</pre>
+                                        )}
                                     </div>
-                                )}
-
+                                ))}
                             </div>
                         )}
-
-
                     </div>
 
-                    {/* Tiedoston metadata (Middle Column) */}
+                    {/* Full metadata panel */}
                     <div className="panel full-metadata">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h2>Tiedoston metadata</h2>
@@ -517,7 +418,7 @@ function App() {
                         )}
                     </div>
 
-                    {/* MusicBrainz metadata (Right Column) */}
+                    {/* MusicBrainz recording-level data */}
                     <div className="panel musicbrainz">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h2>MusicBrainz-metadata</h2>
@@ -531,20 +432,6 @@ function App() {
                             <pre>{JSON.stringify(musicBrainzData, null, 2)}</pre>
                         )}
                     </div>
-
-                </div>
-            )}
-
-            {metadata && activeTab === "musicfetch" && (
-                <div className="panel musicfetch-result">
-                    <h2>Musicfetch-näkymä</h2>
-                    {musicfetchData?.result ? (
-                        <pre>{JSON.stringify(musicfetchData.result, null, 2)}</pre>
-                    ) : musicfetchData?.error ? (
-                        <p>Virhe: {musicfetchData.error}</p>
-                    ) : (
-                        <p>Ei tuloksia Musicfetchiltä.</p>
-                    )}
                 </div>
             )}
         </div>
@@ -552,4 +439,3 @@ function App() {
 }
 
 export default App;
-
