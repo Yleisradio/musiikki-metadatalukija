@@ -11,6 +11,8 @@ window.Buffer = Buffer;
 
 const hasHangul = (str = "") => /[\uAC00-\uD7AF]/.test(str);
 const romanizeIfHangul = (str = "") => hasHangul(str) ? romanize(str, { system: "RR" }) : null;
+const capitalizeFirstLetter = (str = "") =>
+    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
 function App() {
     const [fileName, setFileName] = useState("");
@@ -315,6 +317,7 @@ function App() {
                                         {romanizeIfHangul(cleanData.title) && (
                                             <div className="romanized">{romanizeIfHangul(cleanData.title)}</div>
                                         )}
+                                        <div>{capitalizeFirstLetter(cleanData.title)}</div>
                                     </p>
                                     <div className="sub-info">
                                         <p><strong>Albumilta:</strong><br />
