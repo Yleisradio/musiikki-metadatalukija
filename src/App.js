@@ -14,6 +14,10 @@ const romanizeIfHangul = (str = "") => hasHangul(str) ? romanize(str, { system: 
 const capitalizeFirstLetter = (str = "") =>
     str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
+// --- Unicode normalization helpers (fixes decomposed å/ä/ö etc.) ---
+const normalizeNFC = (s = "") => (s ?? "").toString().normalize("NFC");
+const cleanText = (s = "") => normalizeNFC(s).trim();
+
 function App() {
     const [fileName, setFileName] = useState("");
     const [metadata, setMetadata] = useState(null);
@@ -107,27 +111,36 @@ function App() {
                 setAlbumArt(imageUrl);
             }
 
-            const title = metadata.common?.title || "Unknown title";
-            const performers = metadata.common?.artists?.join(", ") || metadata.common?.artist || "Unknown performer";
+            const title = cleanText(metadata.common?.title) || "Unknown title";
+            const performers =
+                cleanText(metadata.common?.artists?.join(", ") || metadata.common?.artist) || "Unknown performer";
+
 
             let songwriterRaw = "";
             if (metadata.native) {
                 for (const format in metadata.native) {
                     for (const tag of metadata.native[format]) {
                         if (tag.id.toLowerCase() === "©wrt" && typeof tag.value === "string") {
-                            songwriterRaw = tag.value;
+                            songwriterRaw = cleanText(tag.value);
                             break;
                         }
+
                     }
                     if (songwriterRaw) break;
                 }
             }
 
             if (!songwriterRaw && metadata.common?.composer?.[0]) {
-                songwriterRaw = metadata.common.composer[0];
+                songwriterRaw = cleanText(metadata.common.composer[0]);
             }
 
-            const songwriters = songwriterRaw ? songwriterRaw.split(/,|&/).map(s => s.trim()).filter(Boolean) : [];
+            const songwriters = songwriterRaw
+                ? songwriterRaw
+                    .split(/,|&/)
+                    .map(s => cleanText(s))
+                    .filter(Boolean)
+                : [];
+
 
             let year = metadata.common?.year;
             if (!year && metadata.native) {
@@ -172,7 +185,7 @@ function App() {
             }
             if (!isrc) isrc = "Unknown ISRC";
 
-            const album = metadata.common?.album || "Unknown album";
+            const album = cleanText(metadata.common?.album) || "Unknown album";
             const track = metadata.common?.track;
             const trackNumber = track?.no?.toString() || "Unknown";
             const genre = Array.isArray(metadata.common?.genre)
@@ -199,6 +212,7 @@ function App() {
                 label = metadata.common.copyright.replace(/^(?:℗|©)?\s*\d{4}\s*/i, "").trim();
             }
             if (!label) label = "Unknown label";
+            label = cleanText(label);
 
             let albumId = "";
             let titleId = "";
