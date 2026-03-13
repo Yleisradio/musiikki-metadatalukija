@@ -4,19 +4,32 @@ import { useDropzone } from "react-dropzone";
 import { Buffer } from "buffer";
 import JsonView from "react18-json-view";
 import "react18-json-view/src/style.css";
-import { romanize } from "@romanize/korean";
 import "./App.css";
 
 window.Buffer = Buffer;
 
-const hasHangul = (str = "") => /[\uAC00-\uD7AF]/.test(str);
-const romanizeIfHangul = (str = "") => hasHangul(str) ? romanize(str, { system: "RR" }) : null;
 const capitalizeFirstLetter = (str = "") =>
     str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
-// --- Unicode normalization helpers (fixes decomposed å/ä/ö etc.) ---
 const normalizeNFC = (s = "") => (s ?? "").toString().normalize("NFC");
 const cleanText = (s = "") => normalizeNFC(s).trim();
+const formatFinnishDate = (dateStr = "") => {
+    if (!dateStr) return "";
+
+    const parts = dateStr.split("-");
+
+    if (parts.length === 3) {
+        const [year, month, day] = parts;
+        return `${Number(day)}.${Number(month)}.${year}`;
+    }
+
+    if (parts.length === 2) {
+        const [year, month] = parts;
+        return `${Number(month)}.${year}`;
+    }
+
+    return dateStr;
+};
 
 function App() {
     const [fileName, setFileName] = useState("");
@@ -25,6 +38,7 @@ function App() {
     const [musicBrainzData, setMusicBrainzData] = useState(null);
     const [showFullJson, setShowFullJson] = useState(false);
     const [showBrainzJson, setShowBrainzJson] = useState(false);
+    const [activeTab, setActiveTab] = useState("main");
     const [cleanData, setCleanData] = useState({
         title: "",
         titleId: "",
@@ -50,8 +64,247 @@ function App() {
         }));
     };
 
+    const getAliasByType = (artist, aliasType) => {
+        if (!artist?.aliases?.length) return null;
+        return artist.aliases.find(alias => alias.type === aliasType);
+    };
+
+    const getRelationValues = (artist, relationType) => {
+        if (!artist?.relations?.length) return [];
+        return artist.relations
+            .filter(rel => rel.type === relationType && rel.artist?.name)
+            .map(rel => rel.artist.name);
+    };
+
+    const getCurrentMembers = (artist) => {
+        if (!artist?.relations?.length) return [];
+        return artist.relations
+            .filter(rel =>
+                rel.type === "member of band" &&
+                rel.artist?.name &&
+                rel.direction === "backward" &&
+                rel.ended === false
+            )
+            .map(rel => {
+                const roles = rel.attributes?.filter(attr => attr !== "original") || [];
+                return {
+                    name: rel["target-credit"] || rel.artist.name,
+                    roles,
+                    original: rel.attributes?.includes("original")
+                };
+            });
+    };
+
+    const getFormerMembers = (artist) => {
+        if (!artist?.relations?.length) return [];
+        return artist.relations
+            .filter(rel =>
+                rel.type === "member of band" &&
+                rel.artist?.name &&
+                rel.direction === "backward" &&
+                rel.ended === true
+            )
+            .map(rel => {
+                const roles = rel.attributes?.filter(attr => attr !== "original") || [];
+                return {
+                    name: rel["target-credit"] || rel.artist.name,
+                    roles,
+                    original: rel.attributes?.includes("original"),
+                    begin: rel.begin || "",
+                    end: rel.end || ""
+                };
+            });
+    };
+
+    const getMemberOfBands = (artist) => {
+        if (!artist?.relations?.length) return [];
+
+        const bands = artist.relations
+            .filter(rel =>
+                rel.type === "member of band" &&
+                rel.artist?.name &&
+                rel.direction === "forward"
+            )
+            .map(rel => rel.artist.name);
+
+        return dedupeValues(bands);
+    };
+
+    const getAliasesByType = (artist, aliasType) => {
+        if (!artist?.aliases?.length) return [];
+
+        const aliases = artist.aliases
+            .filter(alias => alias.type === aliasType && alias.name)
+            .map(alias => alias.name);
+
+        return dedupeValues(aliases, artist.name);
+    };
+
+    const dedupeValues = (items = [], excludeValue = "") => {
+        const normalizedExclude = cleanText(excludeValue).toLowerCase();
+        const seen = new Set();
+
+        return items.filter((item) => {
+            const cleaned = cleanText(item);
+            const key = cleaned.toLowerCase();
+
+            if (!cleaned) return false;
+            if (key === normalizedExclude) return false;
+            if (seen.has(key)) return false;
+
+            seen.add(key);
+            return true;
+        });
+    };
+
+    const getMeaningfulSearchHints = (artist) => {
+        if (!artist?.aliases?.length) return [];
+
+        const hints = artist.aliases
+            .filter(alias =>
+                alias.type === "Search hint" &&
+                alias.name &&
+                alias.name.trim().length > 1 &&
+                !alias.name.toLowerCase().includes("vevo") &&
+                !alias.name.toLowerCase().includes("channel")
+            )
+            .map(alias => alias.name);
+
+        return dedupeValues(hints, artist.name);
+    };
+
+    const renderListValue = (items) => {
+        if (!items || items.length === 0) return <div> </div>;
+
+        return (
+            <div className="relation-list">
+                {items.map((item, idx) => (
+                    <div key={idx} className="relation-item">
+                        <span className="relation-bullet">•</span>
+                        <span>{item}</span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const renderMemberList = (members) => {
+        if (!members || members.length === 0) return <div> </div>;
+
+        return (
+            <div className="relation-list">
+                {members.map((member, idx) => (
+                    <div key={idx} className="relation-item">
+                        <span className="relation-bullet">•</span>
+                        <span>
+                            {member.name}
+                            {member.roles.length > 0 && ` (${member.roles.join(", ")})`}
+                            {member.original ? " [original]" : ""}
+                            {member.begin || member.end ? ` — ${member.begin || "?"}–${member.end || "?"}` : ""}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const renderArtistMetadataPanel = (artist) => {
+        const legalNameAliases = getAliasesByType(artist, "Legal name");
+        const artistNameAliases = getAliasesByType(artist, "Artist name");
+        const searchHintAliases = getMeaningfulSearchHints(artist);
+        const currentMembers = getCurrentMembers(artist);
+        const formerMembers = getFormerMembers(artist).slice(0, 8);
+        const memberOfBands = getMemberOfBands(artist);
+        const founders = getRelationValues(artist, "founder");
+        const subgroups = getRelationValues(artist, "subgroup");
+        const isGroup = artist.type === "Group";
+        const isPerson = artist.type === "Person";
+
+        const beginLabel = isGroup ? "Perustettu" : isPerson ? "Syntynyt" : "Syntynyt/Perustettu";
+        const endLabel = isGroup ? "Lakkautettu" : isPerson ? "Kuollut" : "Kuollut/Lakkautettu";
+
+        return (
+            <div className="panel artist-metadata-clean">
+                <h2>Esittäjän lisätiedot</h2>
+
+                <div className="artist-metadata-columns">
+                    <div className="artist-metadata-column">
+                        <p><strong>Nimi:</strong><br />{artist.name || ""}</p>
+
+                        {artist.type && (
+                            <p><strong>Tyyppi:</strong><br />{artist.type}</p>
+                        )}
+
+                        {artist["life-span"]?.begin && (
+                            <p><strong>{beginLabel}:</strong><br />{formatFinnishDate(artist["life-span"].begin)}</p>
+                        )}
+
+                        {artist["life-span"]?.end && (
+                            <p><strong>{endLabel}:</strong><br />{formatFinnishDate(artist["life-span"].end)}</p>
+                        )}
+
+                        {artist.gender && artist.type === "Person" && (
+                            <p><strong>Sukupuoli:</strong><br />{artist.gender}</p>
+                        )}
+
+                        {legalNameAliases.length > 0 && (
+                            <p><strong>Oikea (koko) nimi:</strong><br />{renderListValue(legalNameAliases)}</p>
+                        )}
+
+                        {artistNameAliases.length > 0 && (
+                            <p><strong>Alias:</strong><br />{renderListValue(artistNameAliases)}</p>
+                        )}
+
+                        {searchHintAliases.length > 0 && (
+                            <p><strong>Tunnetaan myös nimellä:</strong><br />{renderListValue(searchHintAliases)}</p>
+                        )}
+
+                    </div>
+
+                    <div className="artist-metadata-column">
+                        {/*{artist.country && (*/}
+                        {/*    <p><strong>Maatunnus:</strong><br />{artist.country}</p>*/}
+                        {/*)}*/}
+
+                        {artist.area?.name && (
+                            <p><strong>Asuinalue:</strong><br />{artist.area.name}</p>
+                        )}
+
+                        {artist["begin-area"]?.name && (
+                            <p><strong>Kotoisin:</strong><br />{artist["begin-area"].name}</p>
+                        )}
+
+                        {artist.disambiguation && (
+                            <p><strong>Täsmennys:</strong><br />{artist.disambiguation}</p>
+                        )}
+
+                        {artist.type === "Group" && currentMembers.length > 0 && (
+                            <p><strong>Yhtyeen jäsen (tällä hetkellä):</strong><br />{renderMemberList(currentMembers)}</p>
+                        )}
+
+                        {artist.type === "Group" && formerMembers.length > 0 && (
+                            <p><strong>Yhtyeen jäsen (entinen):</strong><br />{renderMemberList(formerMembers)}</p>
+                        )}
+
+                        {artist.type === "Group" && founders.length > 0 && (
+                            <p><strong>Perustaja:</strong><br />{renderListValue(founders)}</p>
+                        )}
+
+                        {artist.type === "Group" && subgroups.length > 0 && (
+                            <p><strong>Muut projektit:</strong><br />{renderListValue(subgroups)}</p>
+                        )}
+
+                        {artist.type === "Person" && memberOfBands.length > 0 && (
+                            <p><strong>Yhtyeen jäsen:</strong><br />{renderListValue(memberOfBands)}</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const fetchMusicBrainzData = async (isrc) => {
-        if (!isrc || isrc === "Unknown ISRC") return;
+        if (!isrc || isrc === "Tuntematon ISRC") return;
         try {
             const response = await fetch(`https://musicbrainz.org/ws/2/recording/?query=isrc:${isrc}&fmt=json`);
             if (!response.ok) throw new Error("Failed to fetch MusicBrainz data");
@@ -98,6 +351,7 @@ function App() {
         setAlbumArt(null);
         setMetadata(null);
         setMusicBrainzData(null);
+        setArtistDetails([]);
 
         try {
             const metadata = await parseBlob(file);
@@ -111,10 +365,9 @@ function App() {
                 setAlbumArt(imageUrl);
             }
 
-            const title = cleanText(metadata.common?.title) || "Unknown title";
+            const title = cleanText(metadata.common?.title) || "Tuntematon otsikko";
             const performers =
-                cleanText(metadata.common?.artists?.join(", ") || metadata.common?.artist) || "Unknown performer";
-
+                cleanText(metadata.common?.artists?.join(", ") || metadata.common?.artist) || "Tuntematon esittäjä";
 
             let songwriterRaw = "";
             if (metadata.native) {
@@ -124,7 +377,6 @@ function App() {
                             songwriterRaw = cleanText(tag.value);
                             break;
                         }
-
                     }
                     if (songwriterRaw) break;
                 }
@@ -140,7 +392,6 @@ function App() {
                     .map(s => cleanText(s))
                     .filter(Boolean)
                 : [];
-
 
             let year = metadata.common?.year;
             if (!year && metadata.native) {
@@ -162,7 +413,7 @@ function App() {
                 const match = metadata.common.copyright.match(/(\d{4})/);
                 if (match) year = match[1];
             }
-            if (!year) year = "Unknown year";
+            if (!year) year = "Tuntematon vuosi";
 
             let isrc = metadata.common?.isrc || "";
             if (!isrc && metadata.native) {
@@ -183,14 +434,14 @@ function App() {
                     }
                 }
             }
-            if (!isrc) isrc = "Unknown ISRC";
+            if (!isrc) isrc = "Tuntematon ISRC";
 
-            const album = cleanText(metadata.common?.album) || "Unknown album";
+            const album = cleanText(metadata.common?.album) || "Tuntematon albumi";
             const track = metadata.common?.track;
-            const trackNumber = track?.no?.toString() || "Unknown";
+            const trackNumber = track?.no?.toString() || "Tuntematon";
             const genre = Array.isArray(metadata.common?.genre)
                 ? metadata.common.genre.join(", ")
-                : metadata.common?.genre || "Unknown genre";
+                : metadata.common?.genre || "Tuntematon genre";
 
             let label = "";
             if (metadata.native) {
@@ -211,7 +462,7 @@ function App() {
             if (!label && metadata.common?.copyright) {
                 label = metadata.common.copyright.replace(/^(?:℗|©)?\s*\d{4}\s*/i, "").trim();
             }
-            if (!label) label = "Unknown label";
+            if (!label) label = "Tuntematon levymerkki";
             label = cleanText(label);
 
             let albumId = "";
@@ -264,7 +515,7 @@ function App() {
 
             const cleanedMetadata = JSON.parse(JSON.stringify(combinedMetadata, (key, value) => {
                 if (key === "data" && typeof value === "object") {
-                    return "Image binary data hidden for convenience";
+                    return "Image binary data is very long so it is hidden for convenience /Teemu";
                 }
                 return value;
             }));
@@ -312,144 +563,178 @@ function App() {
             {fileName && <p><strong>Tiedosto:</strong> {fileName}</p>}
 
             {metadata && (
-                <div className="columns-wrapper">
-
-                    {/* Left column: Yleistiedot + ArtistInfo */}
-                    <div className="left-column">
-                        <div className="panel clean-metadata">
-                            <h2>Yleistiedot</h2>
-                            {/* Left and Right inside clean panel */}
-                            <div className="metadata-columns">
-                                {/* Left */}
-                                <div className="metadata-column">
-                                    <p><strong>Kappale:</strong><br />
-                                        {cleanData.titleId ? (
-                                            <a href={`https://music.apple.com/song/${cleanData.titleId}`} target="_blank" rel="noopener noreferrer">
-                                                {cleanData.title}
-                                            </a>
-                                        ) : cleanData.title}
-                                        {romanizeIfHangul(cleanData.title) && (
-                                            <div className="romanized">{romanizeIfHangul(cleanData.title)}</div>
-                                        )}
-                                        <div>{capitalizeFirstLetter(cleanData.title)}</div>
-                                    </p>
-                                    <div className="sub-info">
-                                        <p><strong>Albumilta:</strong><br />
-                                            {cleanData.albumId ? (
-                                                <a href={`https://music.apple.com/album/${cleanData.albumId}`} target="_blank" rel="noopener noreferrer">
-                                                    {cleanData.album}
-                                                </a>
-                                            ) : cleanData.album}
-                                            {romanizeIfHangul(cleanData.album) && (
-                                                <div className="romanized">{romanizeIfHangul(cleanData.album)}</div>
-                                            )}
-                                        </p>
-                                    </div>
-                                    <p><strong>Uranumero:</strong><br />{cleanData.trackNumber}</p>
-                                    <p><strong>Levy-yhtiö:</strong><br />{cleanData.label}</p>
-                                    <p><strong>Julkaisuvuosi:</strong><br />{cleanData.year}</p>
-                                    <p><strong>Kesto:</strong><br />{cleanData.durationFormatted}</p>
-                                    <p><strong>Tiedostokoko:</strong><br />{cleanData.fileSize}</p>
-                                </div>
-
-                                {/* Right */}
-                                <div className="metadata-column">
-                                    <p><strong>Esittäjät:</strong><br />
-                                        {cleanData.performers
-                                            ? cleanData.performers.split(/,|&/).map((name, idx) => (
-                                                <div key={idx}>
-                                                    {name.trim()}
-                                                    {romanizeIfHangul(name) && (
-                                                        <div className="romanized">{romanizeIfHangul(name)}</div>
-                                                    )}
-                                                </div>
-                                            ))
-                                            : ""}
-                                    </p>
-
-                                    <p><strong>ISRC:</strong><br />{cleanData.isrc}</p>
-
-                                    {cleanData.songwriters.length > 0 && (
-                                        <p><strong>Tekijät:</strong><br />
-                                            {cleanData.songwriters.map((name, idx) => (
-                                                <div key={idx}>
-                                                    {name}
-                                                    {romanizeIfHangul(name) && (
-                                                        <div className="romanized">{romanizeIfHangul(name)}</div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </p>
-                                    )}
-
-                                    <p><strong>Laji:</strong><br />{cleanData.genre}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Artist Info */}
-                        {artistDetails.length > 0 && (
-                            <div>
-                                <h3>MusicBrainz-metadata (esittäjät)</h3>
-                                {artistDetails.map((artist) => (
-                                    <div key={artist.id} className="panel artist-info">
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                            <h3>{artist.name}</h3>
-                                            <button
-                                                className="toggle-button"
-                                                onClick={() => toggleArtistJson(artist.id)}
-                                            >
-                                                {artistJsonVisibility[artist.id] ? "Tekstinäkymä" : "JSON-näkymä"}
-                                            </button>
-                                        </div>
-                                        {artistJsonVisibility[artist.id] ? (
-                                            <JsonView
-                                                src={artist}
-                                                name={false}
-                                                collapsed={2}
-                                                displayDataTypes={false}
-                                                enableClipboard={false}
-                                                style={{ fontSize: "13px" }}
-                                            />
-                                        ) : (
-                                            <pre style={{ fontSize: "13px" }}>{JSON.stringify(artist, null, 2)}</pre>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Full metadata panel */}
-                    <div className="panel full-metadata">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h2>Tiedoston metadata</h2>
-                            <button className="toggle-button" onClick={() => setShowFullJson(prev => !prev)}>
-                                {showFullJson ? "Tekstinäkymä" : "JSON-näkymä"}
-                            </button>
-                        </div>
-                        {showFullJson ? (
-                            <JsonView src={metadata} name={false} collapsed={2} displayDataTypes={false} enableClipboard={false} style={{ fontSize: '13px' }} />
-                        ) : (
-                            <pre>{JSON.stringify(metadata, null, 2)}</pre>
-                        )}
-                    </div>
-
-                    {/* MusicBrainz recording-level data */}
-                    <div className="panel musicbrainz">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h2>MusicBrainz-metadata</h2>
-                            <button className="toggle-button" onClick={() => setShowBrainzJson(prev => !prev)}>
-                                {showBrainzJson ? "Tekstinäkymä" : "JSON-näkymä"}
-                            </button>
-                        </div>
-                        {showBrainzJson ? (
-                            <JsonView src={musicBrainzData} name={false} collapsed={2} displayDataTypes={false} enableClipboard={false} style={{ fontSize: '13px' }} />
-                        ) : (
-                            <pre>{JSON.stringify(musicBrainzData, null, 2)}</pre>
-                        )}
-                    </div>
+                <div className="tab-buttons">
+                    <button
+                        className={activeTab === "main" ? "active" : ""}
+                        onClick={() => setActiveTab("main")}
+                    >
+                        Perusnäkymä
+                    </button>
+                    <button
+                        className={activeTab === "musicbrainz" ? "active" : ""}
+                        onClick={() => setActiveTab("musicbrainz")}
+                    >
+                        MusicBrainz-näkymä
+                    </button>
                 </div>
+            )}
+
+            {metadata && (
+                <>
+                    {activeTab === "main" && (
+                        <div className="main-layout-three-columns">
+                            <div className="panel clean-metadata">
+                                <h2>Yleistiedot</h2>
+                                <div className="metadata-columns">
+                                    <div className="metadata-column">
+                                        <p><strong>Kappale:</strong><br />
+                                            {cleanData.titleId ? (
+                                                <a href={`https://music.apple.com/song/${cleanData.titleId}`} target="_blank" rel="noopener noreferrer">
+                                                    {cleanData.title}
+                                                </a>
+                                            ) : cleanData.title}
+                                            <div>{capitalizeFirstLetter(cleanData.title)}</div>
+                                        </p>
+
+                                        <div className="sub-info">
+                                            <p><strong>Albumilta:</strong><br />
+                                                {cleanData.albumId ? (
+                                                    <a href={`https://music.apple.com/album/${cleanData.albumId}`} target="_blank" rel="noopener noreferrer">
+                                                        {cleanData.album}
+                                                    </a>
+                                                ) : cleanData.album}
+                                            </p>
+                                        </div>
+
+                                        <p><strong>Uranumero:</strong><br />{cleanData.trackNumber}</p>
+                                        <p><strong>Levy-yhtiö:</strong><br />{cleanData.label}</p>
+                                        <p><strong>Julkaisuvuosi:</strong><br />{cleanData.year}</p>
+                                        <p><strong>Kesto:</strong><br />{cleanData.durationFormatted}</p>
+                                        <p><strong>Tiedostokoko:</strong><br />{cleanData.fileSize}</p>
+                                    </div>
+
+                                    <div className="metadata-column">
+                                        <p><strong>Esittäjät:</strong><br />
+                                            {cleanData.performers
+                                                ? renderListValue(
+                                                    cleanData.performers
+                                                        .split(/,|&/)
+                                                        .map(name => name.trim())
+                                                        .filter(Boolean)
+                                                )
+                                                : ""}
+                                        </p>
+
+                                        <p><strong>ISRC:</strong><br />{cleanData.isrc}</p>
+
+                                        {cleanData.songwriters.length > 0 && (
+                                            <p><strong>Tekijät:</strong><br />
+                                                {renderListValue(cleanData.songwriters)}
+                                            </p>
+                                        )}
+
+                                        <p><strong>Laji:</strong><br />{cleanData.genre}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="artist-summary-column">
+                                {artistDetails.length > 0 ? (
+                                    artistDetails.map((artist) => (
+                                        <div key={artist.id}>
+                                            {renderArtistMetadataPanel(artist)}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="panel artist-metadata-clean">
+                                        <h2>Esittäjän lisätiedot</h2>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="panel full-metadata">
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <h2>Tiedoston metadata</h2>
+                                    <button className="toggle-button" onClick={() => setShowFullJson(prev => !prev)}>
+                                        {showFullJson ? "Tekstinäkymä" : "JSON-näkymä"}
+                                    </button>
+                                </div>
+                                {showFullJson ? (
+                                    <JsonView
+                                        src={metadata}
+                                        name={false}
+                                        collapsed={2}
+                                        displayDataTypes={false}
+                                        enableClipboard={false}
+                                        style={{ fontSize: "13px" }}
+                                    />
+                                ) : (
+                                    <pre>{JSON.stringify(metadata, null, 2)}</pre>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "musicbrainz" && (
+                        <div className="page-layout">
+                            <div className="bottom-row">
+                                <div className="panel musicbrainz">
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <h2>Teoksen MusicBrainz-metadata</h2>
+                                        <button className="toggle-button" onClick={() => setShowBrainzJson(prev => !prev)}>
+                                            {showBrainzJson ? "Tekstinäkymä" : "JSON-näkymä"}
+                                        </button>
+                                    </div>
+                                    {showBrainzJson ? (
+                                        <JsonView
+                                            src={musicBrainzData}
+                                            name={false}
+                                            collapsed={2}
+                                            displayDataTypes={false}
+                                            enableClipboard={false}
+                                            style={{ fontSize: "13px" }}
+                                        />
+                                    ) : (
+                                        <pre>{JSON.stringify(musicBrainzData, null, 2)}</pre>
+                                    )}
+                                </div>
+
+                                {artistDetails.length > 0 && (
+                                    <div className="artist-raw-column">
+                                        {artistDetails.map((artist) => (
+                                            <div key={artist.id} className="panel artist-info">
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                                    <div>
+                                                        <h2>Esittäjän MusicBrainz-metadata</h2>
+                                                        <h3>{artist.name}</h3>
+                                                    </div>
+                                                    <button
+                                                        className="toggle-button"
+                                                        onClick={() => toggleArtistJson(artist.id)}
+                                                    >
+                                                        {artistJsonVisibility[artist.id] ? "Tekstinäkymä" : "JSON-näkymä"}
+                                                    </button>
+                                                </div>
+                                                {artistJsonVisibility[artist.id] ? (
+                                                    <JsonView
+                                                        src={artist}
+                                                        name={false}
+                                                        collapsed={2}
+                                                        displayDataTypes={false}
+                                                        enableClipboard={false}
+                                                        style={{ fontSize: "13px" }}
+                                                    />
+                                                ) : (
+                                                    <pre style={{ fontSize: "13px" }}>{JSON.stringify(artist, null, 2)}</pre>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
