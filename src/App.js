@@ -64,11 +64,6 @@ function App() {
         }));
     };
 
-    const getAliasByType = (artist, aliasType) => {
-        if (!artist?.aliases?.length) return null;
-        return artist.aliases.find(alias => alias.type === aliasType);
-    };
-
     const getRelationValues = (artist, relationType) => {
         if (!artist?.relations?.length) return [];
         return artist.relations
