@@ -4,6 +4,7 @@ import { Buffer } from "buffer";
 import "react18-json-view/src/style.css";
 import "./App.css";
 import FileUpload from "./components/FileUpload";
+import JsonMetadataPanel from "./components/JsonMetadataPanel";
 import MainMetadataView from "./components/MainMetadataView";
 import MetadataView from "./components/MetadataView";
 import MetadataTabs from "./components/MetadataTabs";
@@ -11,6 +12,15 @@ import MusicBrainzView from "./components/MusicBrainzView";
 import { cleanText } from "./utils/metadata";
 
 window.Buffer = Buffer;
+
+function serializeMetadata(metadata) {
+    return JSON.parse(JSON.stringify(metadata, (key, value) => {
+        if (key === "data" && typeof value === "object") {
+            return "Image binary data is very long so it is hidden for convenience /Teemu";
+        }
+        return value;
+    }));
+}
 
 const initialCleanData = {
     title: "",
@@ -31,6 +41,7 @@ const initialCleanData = {
 function App() {
     const [fileName, setFileName] = useState("");
     const [metadata, setMetadata] = useState(null);
+    const [originalMetadata, setOriginalMetadata] = useState(null);
     const [albumArt, setAlbumArt] = useState(null);
     const [musicBrainzData, setMusicBrainzData] = useState(null);
     const [activeTab, setActiveTab] = useState("main");
@@ -79,6 +90,7 @@ function App() {
         setFileName(file.name);
         setAlbumArt(null);
         setMetadata(null);
+        setOriginalMetadata(null);
         setMusicBrainzData(null);
         setArtistDetails([]);
 
@@ -219,6 +231,8 @@ function App() {
                 fileSize
             });
 
+            setOriginalMetadata(serializeMetadata(parsedMetadata));
+
             const combinedMetadata = {
                 ...parsedMetadata,
                 fileInfo: {
@@ -228,14 +242,7 @@ function App() {
                     lastModified: file.lastModified
                 }
             };
-            const cleanedMetadata = JSON.parse(JSON.stringify(combinedMetadata, (key, value) => {
-                if (key === "data" && typeof value === "object") {
-                    return "Image binary data is very long so it is hidden for convenience /Teemu";
-                }
-                return value;
-            }));
-
-            setMetadata(cleanedMetadata);
+            setMetadata(serializeMetadata(combinedMetadata));
             fetchMusicBrainzData(isrc);
         } catch (error) {
             console.error("Error reading metadata:", error);
@@ -256,6 +263,12 @@ function App() {
                         />
                     ) : activeTab === "metadata" ? (
                         <MetadataView metadata={metadata} onMetadataChange={setMetadata} />
+                    ) : activeTab === "original" ? (
+                        <div className="row g-4 text-start align-items-start">
+                            <div className="col-12">
+                                <JsonMetadataPanel title="Alkuperäinen metadata" data={originalMetadata} />
+                            </div>
+                        </div>
                     ) : (
                         <MusicBrainzView data={musicBrainzData} artistDetails={artistDetails} />
                     )}

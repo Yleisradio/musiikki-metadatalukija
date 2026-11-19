@@ -1,11 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { parseBlob } from 'music-metadata-browser';
 import App from './App';
 import FileUpload from './components/FileUpload';
 import JsonMetadataPanel from './components/JsonMetadataPanel';
 import MainMetadataView from './components/MainMetadataView';
 import MetadataView from './components/MetadataView';
 import MetadataTabs from './components/MetadataTabs';
+
+jest.mock('music-metadata-browser', () => ({ parseBlob: jest.fn() }));
 
 test('renders the metadata reader and audio upload instructions', () => {
   render(<App />);
@@ -29,6 +32,7 @@ test('keeps React in control of Bootstrap tab selection', () => {
   const { rerender } = render(<MetadataTabs activeTab="main" onChange={onChange} />);
   const musicBrainzTab = screen.getByRole('tab', { name: 'MusicBrainz-näkymä' });
   const metadataTab = screen.getByRole('tab', { name: 'Metadatanäkymä' });
+  const originalTab = screen.getByRole('tab', { name: 'Alkuperäinen metadata' });
   expect(screen.getByRole('tab', { name: 'Perusnäkymä' })).toHaveClass('active');
 
   userEvent.click(metadataTab);
@@ -38,6 +42,12 @@ test('keeps React in control of Bootstrap tab selection', () => {
   expect(metadataTab).toHaveAttribute('aria-selected', 'true');
   expect(metadataTab).toHaveClass('active');
   expect(screen.getByRole('tab', { name: 'Perusnäkymä' })).not.toHaveClass('active');
+
+  userEvent.click(originalTab);
+  expect(onChange).toHaveBeenCalledWith('original');
+  rerender(<MetadataTabs activeTab="original" onChange={onChange} />);
+  expect(originalTab).toHaveAttribute('aria-selected', 'true');
+  expect(originalTab).toHaveClass('active');
 
   userEvent.click(musicBrainzTab);
   expect(onChange).toHaveBeenCalledWith('musicbrainz');
@@ -92,6 +102,32 @@ test('edits file metadata and updates the displayed JSON', () => {
   rerender(<MetadataView metadata={onMetadataChange.mock.lastCall[0]} onMetadataChange={onMetadataChange} />);
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Updated"');
   expect(screen.getByRole('heading', { name: 'Tiedoston metadata' }).closest('section')).toHaveClass('card');
+});
+
+test('shows original file metadata unchanged after editing metadata', async () => {
+  parseBlob.mockResolvedValue({
+    common: { title: 'Original title' },
+    format: { duration: 12 },
+    native: { id3v2: [{ id: 'TIT2', value: 'Original native title' }] }
+  });
+  render(<App />);
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'test.mp3', { type: 'audio/mpeg' })
+  );
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
+
+  userEvent.click(screen.getByRole('tab', { name: 'Metadatanäkymä' }));
+  fireEvent.change(screen.getByLabelText('common / title'), { target: { value: 'Edited title' } });
+  userEvent.click(screen.getByRole('tab', { name: 'Alkuperäinen metadata' }));
+
+  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
+    .toHaveTextContent('"title": "Original title"');
+  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
+    .toHaveTextContent('"value": "Original native title"');
+  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
+    .not.toHaveTextContent('Edited title');
 });
 
 test('selects recording country and track language metadata', () => {
