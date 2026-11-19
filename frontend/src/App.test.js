@@ -93,3 +93,23 @@ test('edits file metadata and updates the displayed JSON', () => {
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Updated"');
   expect(screen.getByRole('heading', { name: 'Tiedoston metadata' }).closest('section')).toHaveClass('card');
 });
+
+test('selects recording country and track language metadata', () => {
+  const onMetadataChange = jest.fn();
+  const { rerender } = render(<MetadataView metadata={{ common: {} }} onMetadataChange={onMetadataChange} />);
+
+  fireEvent.change(screen.getByLabelText('Äänitysmaa'), { target: { value: 'FI' } });
+  const metadataWithCountry = onMetadataChange.mock.lastCall[0];
+  rerender(<MetadataView metadata={metadataWithCountry} onMetadataChange={onMetadataChange} />);
+  fireEvent.change(screen.getByLabelText('Kappaleen kieli'), { target: { value: 'fin' } });
+  rerender(<MetadataView metadata={onMetadataChange.mock.lastCall[0]} onMetadataChange={onMetadataChange} />);
+
+  expect(onMetadataChange).toHaveBeenNthCalledWith(1, {
+    common: { recordingcountry: 'FI' }
+  });
+  expect(onMetadataChange).toHaveBeenNthCalledWith(2, {
+    common: { recordingcountry: 'FI', language: 'fin' }
+  });
+  expect(screen.getByLabelText('Äänitysmaa')).toHaveValue('FI');
+  expect(screen.getByLabelText('Kappaleen kieli')).toHaveValue('fin');
+});
