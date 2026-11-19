@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import FileUpload from './components/FileUpload';
@@ -74,8 +74,22 @@ test('renders summary and artist metadata in the main view', () => {
   expect(screen.getByText('Writer')).toBeInTheDocument();
 });
 
-test('renders file metadata in its own view', () => {
-  render(<MetadataView metadata={{ title: 'Test' }} />);
+test('edits file metadata and updates the displayed JSON', () => {
+  const onMetadataChange = jest.fn();
+  const metadata = { format: { duration: 12 }, common: { title: 'Test' } };
+  const { rerender, container } = render(
+    <MetadataView metadata={metadata} onMetadataChange={onMetadataChange} />
+  );
 
+  expect(container.querySelector('pre').textContent.indexOf('"common"'))
+    .toBeLessThan(container.querySelector('pre').textContent.indexOf('"format"'));
+  fireEvent.change(screen.getByLabelText('common / title'), { target: { value: 'Updated' } });
+
+  expect(onMetadataChange).toHaveBeenLastCalledWith({
+    common: { title: 'Updated' },
+    format: { duration: 12 }
+  });
+  rerender(<MetadataView metadata={onMetadataChange.mock.lastCall[0]} onMetadataChange={onMetadataChange} />);
+  expect(container.querySelector('pre')).toHaveTextContent('"title": "Updated"');
   expect(screen.getByRole('heading', { name: 'Tiedoston metadata' }).closest('section')).toHaveClass('card');
 });

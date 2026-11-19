@@ -255,7 +255,7 @@ function App() {
                             artistDetails={artistDetails}
                         />
                     ) : activeTab === "metadata" ? (
-                        <MetadataView metadata={metadata} />
+                        <MetadataView metadata={metadata} onMetadataChange={setMetadata} />
                     ) : (
                         <MusicBrainzView data={musicBrainzData} artistDetails={artistDetails} />
                     )}

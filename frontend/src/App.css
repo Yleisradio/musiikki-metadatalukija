@@ -87,6 +87,30 @@ body {
   overflow-wrap: anywhere;
 }
 
+.metadata-editor {
+  max-height: min(68vh, 760px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.metadata-fields-group {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: var(--bs-body-bg);
+}
+
+.metadata-fields-group > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.metadata-fields-children {
+  margin-top: 12px;
+  padding-left: 12px;
+}
+
 .metadata-column p,
 .artist-metadata-column p {
   margin: 0 0 16px;
