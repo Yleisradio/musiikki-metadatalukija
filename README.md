@@ -1,5 +1,4 @@
 # Metatietolukija
-(Tuotantokäytössä Yle Arkistossa)
 
 React-sovellus lukee audiotiedoston metatiedot ja esittää oleellisimmat niistä jäsenneltynä, käyttämällä kirjastoa music-metadata-browser. Sovellus esittää myös kirjaston palauttamat metatiedot muokkaamattomana omassa sarakkeessaan (pois lukien kuvien binääridata), ja hakee lisäksi täydentäviä metatietoja MusicBrainzista.
 
@@ -22,17 +21,11 @@ Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetä�
 - `frontend/` sisältää React-käyttöliittymän.
 - `backend/` sisältää TypeScriptillä toteutetun Node.js-taustapalvelun.
 
-## Käynnistys
-
-Tarvitset Node.js:n ja npm:n. Suorita projektin juurihakemistossa:
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-Avaa selaimessa http://localhost:3000.
+Käyttöliittymä käyttää Bootstrap 5:n responsiivista ruudukkoa, kortteja,
+välilehtiä, painikkeita ja apuluokkia. Bootstrapin CSS tuodaan npm-paketista
+tiedostossa `frontend/src/index.js`; näkymien tila hallitaan Reactilla ilman
+Bootstrapin JavaScript-lisäosia. Sovelluskohtaiset tyylit ovat tiedostossa
+`frontend/src/App.css`.
 
 ## Käynnistys Docker Composella
 
@@ -42,9 +35,8 @@ Käynnistä frontend ja backend projektin juurihakemistosta:
 docker compose up --build
 ```
 
-Frontend avautuu osoitteessa http://localhost:3000. Backendin terveystarkistuksen
-voi tarkistaa osoitteesta http://localhost:3001/health; frontendin `/api/`-pyynnöt
-välitetään backendille.
+Frontend avautuu osoitteessa http://localhost:3000. 
+frontendin `/api/`-pyynnöt välitetään backendille.
 
 Backendin TypeScript-koodin voi kääntää hakemistossa `backend/` komennolla
 `npm run build`.

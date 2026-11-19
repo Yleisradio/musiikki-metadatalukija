@@ -4,18 +4,22 @@ import JsonMetadataPanel from "./JsonMetadataPanel";
 
 function MainMetadataView({ cleanData, artistDetails, metadata }) {
     return (
-        <div className="main-layout-three-columns">
-            <GeneralMetadataPanel data={cleanData} />
-            <div className="artist-summary-column">
+        <div className="row g-4 text-start align-items-start">
+            <div className="col-12 col-md-6 col-xl-4">
+                <GeneralMetadataPanel data={cleanData} />
+            </div>
+            <div className="col-12 col-md-6 col-xl-4 d-flex flex-column gap-4">
                 {artistDetails.length > 0 ? artistDetails.map((artist) => (
                     <ArtistMetadataPanel key={artist.id} artist={artist} />
                 )) : (
-                    <section className="panel artist-metadata-clean">
-                        <h2>Esittäjän lisätiedot</h2>
+                    <section className="card card-body shadow-sm metadata-card artist-metadata-clean">
+                        <h2 className="card-title h5 mb-0">Esittäjän lisätiedot</h2>
                     </section>
                 )}
             </div>
-            <JsonMetadataPanel title="Tiedoston metadata" data={metadata} />
+            <div className="col-12 col-xl-4">
+                <JsonMetadataPanel title="Tiedoston metadata" data={metadata} />
+            </div>
         </div>
     );
 }

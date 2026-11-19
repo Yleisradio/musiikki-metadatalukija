@@ -1,10 +1,10 @@
 function AlbumArt({ imageUrl }) {
     return (
-        <div className="album-art">
+        <div className="album-art d-flex align-items-center justify-content-center">
             {imageUrl ? (
-                <img src={imageUrl} alt="Albumin kansikuva" />
+                <img className="rounded-3 shadow-sm" src={imageUrl} alt="Albumin kansikuva" />
             ) : (
-                <div className="album-art-placeholder">Ei kuvaa</div>
+                <div className="album-art-placeholder rounded-3 shadow-sm text-body-secondary">Ei kuvaa</div>
             )}
         </div>
     );

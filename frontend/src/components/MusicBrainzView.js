@@ -2,22 +2,20 @@ import JsonMetadataPanel from "./JsonMetadataPanel";
 
 function MusicBrainzView({ data, artistDetails }) {
     return (
-        <div className="page-layout">
-            <div className="bottom-row">
+        <div className="text-start">
+            <div className="d-flex flex-column gap-4">
                 <JsonMetadataPanel
                     title="Teoksen MusicBrainz-metadata"
                     data={data}
-                    className="panel musicbrainz"
                 />
                 {artistDetails.length > 0 && (
-                    <div className="artist-raw-column">
+                    <div className="d-flex flex-column gap-4">
                         {artistDetails.map((artist) => (
                             <JsonMetadataPanel
                                 key={artist.id}
                                 title="Esittäjän MusicBrainz-metadata"
                                 subtitle={artist.name}
                                 data={artist}
-                                className="panel artist-info"
                             />
                         ))}
                     </div>

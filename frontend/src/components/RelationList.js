@@ -1,16 +1,16 @@
 function RelationList({ items, members }) {
-    if ((!items || items.length === 0) && (!members || members.length === 0)) return <div />;
+    if ((!items || items.length === 0) && (!members || members.length === 0)) return null;
 
     return (
-        <div className="relation-list">
+        <span className="relation-list d-block">
             {items?.map((item, index) => (
-                <div key={`${item}-${index}`} className="relation-item">
+                <span key={`${item}-${index}`} className="relation-item d-flex align-items-start gap-2">
                     <span className="relation-bullet">•</span>
                     <span>{item}</span>
-                </div>
+                </span>
             ))}
             {members?.map((member, index) => (
-                <div key={`${member.name}-${index}`} className="relation-item">
+                <span key={`${member.name}-${index}`} className="relation-item d-flex align-items-start gap-2">
                     <span className="relation-bullet">•</span>
                     <span>
                         {member.name}
@@ -18,9 +18,9 @@ function RelationList({ items, members }) {
                         {member.original ? " [original]" : ""}
                         {member.begin || member.end ? ` — ${member.begin || "?"}–${member.end || "?"}` : ""}
                     </span>
-                </div>
+                </span>
             ))}
-        </div>
+        </span>
     );
 }
 

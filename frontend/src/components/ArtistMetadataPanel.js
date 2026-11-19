@@ -24,10 +24,10 @@ function ArtistMetadataPanel({ artist }) {
     const endLabel = isGroup ? "Lakkautettu" : isPerson ? "Kuollut" : "Kuollut/Lakkautettu";
 
     return (
-        <section className="panel artist-metadata-clean">
-            <h2>Esittäjän lisätiedot</h2>
-            <div className="artist-metadata-columns">
-                <div className="artist-metadata-column">
+        <section className="card card-body shadow-sm metadata-card artist-metadata-clean">
+            <h2 className="card-title h5">Esittäjän lisätiedot</h2>
+            <div className="row g-3">
+                <div className="col-12 col-sm-6 artist-metadata-column">
                     <p><strong>Nimi:</strong><br />{artist.name || ""}</p>
                     {artist.type && <p><strong>Tyyppi:</strong><br />{artist.type}</p>}
                     {artist["life-span"]?.begin && (
@@ -47,7 +47,7 @@ function ArtistMetadataPanel({ artist }) {
                         <p><strong>Tunnetaan myös nimellä:</strong><br /><RelationList items={searchHintAliases} /></p>
                     )}
                 </div>
-                <div className="artist-metadata-column">
+                <div className="col-12 col-sm-6 artist-metadata-column">
                     {artist.area?.name && <p><strong>Asuinalue:</strong><br />{artist.area.name}</p>}
                     {artist["begin-area"]?.name && <p><strong>Kotoisin:</strong><br />{artist["begin-area"].name}</p>}
                     {artist.disambiguation && <p><strong>Täsmennys:</strong><br />{artist.disambiguation}</p>}

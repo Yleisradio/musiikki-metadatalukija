@@ -12,16 +12,20 @@ function FileUpload({ fileName, imageUrl, onFileSelected }) {
 
     return (
         <>
-            <div className="upload-header-row">
-                <AlbumArt imageUrl={imageUrl} />
-                <div className="upload-area" {...getRootProps()}>
-                    <input {...getInputProps()} />
-                    <p>{isDragActive
-                        ? "Pudota audiotiedosto tähän..."
-                        : "Pudota audiotiedosto tai klikkaa tästä ja valitse."}</p>
+            <div className="row g-3 align-items-center justify-content-center upload-header-row mx-auto mb-3">
+                <div className="col-12 col-sm-auto">
+                    <AlbumArt imageUrl={imageUrl} />
+                </div>
+                <div className="col-12 col-sm">
+                    <div className={`upload-area rounded-3 p-4 d-flex align-items-center justify-content-center${isDragActive ? " upload-area-active" : ""}`} {...getRootProps()}>
+                        <input {...getInputProps({ "aria-label": "Valitse audiotiedosto" })} />
+                        <p className="mb-0 text-primary">{isDragActive
+                            ? "Pudota audiotiedosto tähän..."
+                            : "Pudota audiotiedosto tai klikkaa tästä ja valitse."}</p>
+                    </div>
                 </div>
             </div>
-            {fileName && <p><strong>Tiedosto:</strong> {fileName}</p>}
+            {fileName && <p className="small text-body-secondary text-break mb-4"><strong>Tiedosto:</strong> {fileName}</p>}
         </>
     );
 }

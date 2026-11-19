@@ -7,10 +7,10 @@ function GeneralMetadataPanel({ data }) {
         : [];
 
     return (
-        <section className="panel clean-metadata">
-            <h2>Yleistiedot</h2>
-            <div className="metadata-columns">
-                <div className="metadata-column">
+        <section className="card card-body shadow-sm metadata-card clean-metadata">
+            <h2 className="card-title h5">Yleistiedot</h2>
+            <div className="row g-3">
+                <div className="col-12 col-sm-6 metadata-column">
                     <p>
                         <strong>Kappale:</strong><br />
                         {data.titleId ? (
@@ -18,7 +18,7 @@ function GeneralMetadataPanel({ data }) {
                                 {data.title}
                             </a>
                         ) : data.title}
-                        <div>{capitalizeFirstLetter(data.title)}</div>
+                        <span className="d-block">{capitalizeFirstLetter(data.title)}</span>
                     </p>
                     <div className="sub-info">
                         <p>
@@ -36,7 +36,7 @@ function GeneralMetadataPanel({ data }) {
                     <p><strong>Kesto:</strong><br />{data.durationFormatted}</p>
                     <p><strong>Tiedostokoko:</strong><br />{data.fileSize}</p>
                 </div>
-                <div className="metadata-column">
+                <div className="col-12 col-sm-6 metadata-column">
                     <p><strong>Esittäjät:</strong><br /><RelationList items={performers} /></p>
                     <p><strong>ISRC:</strong><br />{data.isrc}</p>
                     {data.songwriters.length > 0 && (

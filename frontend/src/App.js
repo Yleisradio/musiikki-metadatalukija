@@ -242,7 +242,7 @@ function App() {
     }, []);
 
     return (
-        <main className="container">
+        <main className="container-fluid app-shell">
             <h1>Musiikin metatietolukija</h1>
             <FileUpload fileName={fileName} imageUrl={albumArt} onFileSelected={handleFileUpload} />
             {metadata && (

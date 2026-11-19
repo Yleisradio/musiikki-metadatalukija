@@ -1,11 +1,11 @@
 function MetadataTabs({ activeTab, onChange }) {
     return (
-        <div className="tab-buttons" role="tablist" aria-label="Metatietonäkymät">
+        <div className="nav nav-tabs justify-content-center gap-1 my-4" role="tablist" aria-label="Metatietonäkymät">
             <button
                 type="button"
                 role="tab"
                 aria-selected={activeTab === "main"}
-                className={activeTab === "main" ? "active" : ""}
+                className={`nav-link${activeTab === "main" ? " active" : ""}`}
                 onClick={() => onChange("main")}
             >
                 Perusnäkymä
@@ -14,7 +14,7 @@ function MetadataTabs({ activeTab, onChange }) {
                 type="button"
                 role="tab"
                 aria-selected={activeTab === "musicbrainz"}
-                className={activeTab === "musicbrainz" ? "active" : ""}
+                className={`nav-link${activeTab === "musicbrainz" ? " active" : ""}`}
                 onClick={() => onChange("musicbrainz")}
             >
                 MusicBrainz-näkymä
