@@ -17,13 +17,34 @@ Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetä�
 - **Kappale- ja albumitietojen Apple Music -linkit:** Muodostaa linkit julkaisun Apple Music -sivulle, jos tiedostoon on tallennettu vastaavat Apple-tunnisteet.
 
 
+## Projektirakenne
+
+- `frontend/` sisältää React-käyttöliittymän.
+- `backend/` sisältää TypeScriptillä toteutetun Node.js-taustapalvelun.
+
 ## Käynnistys
 
-Tarvitset Node.js:n ja npm:n. Suorita projektikansiossa:
+Tarvitset Node.js:n ja npm:n. Suorita projektin juurihakemistossa:
 
 ```bash
+cd frontend
 npm install
 npm start
 ```
 
 Avaa selaimessa http://localhost:3000.
+
+## Käynnistys Docker Composella
+
+Käynnistä frontend ja backend projektin juurihakemistosta:
+
+```bash
+docker compose up --build
+```
+
+Frontend avautuu osoitteessa http://localhost:3000. Backendin terveystarkistuksen
+voi tarkistaa osoitteesta http://localhost:3001/health; frontendin `/api/`-pyynnöt
+välitetään backendille.
+
+Backendin TypeScript-koodin voi kääntää hakemistossa `backend/` komennolla
+`npm run build`.
