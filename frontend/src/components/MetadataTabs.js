@@ -13,6 +13,15 @@ function MetadataTabs({ activeTab, onChange }) {
             <button
                 type="button"
                 role="tab"
+                aria-selected={activeTab === "metadata"}
+                className={`nav-link${activeTab === "metadata" ? " active" : ""}`}
+                onClick={() => onChange("metadata")}
+            >
+                Metadatanäkymä
+            </button>
+            <button
+                type="button"
+                role="tab"
                 aria-selected={activeTab === "musicbrainz"}
                 className={`nav-link${activeTab === "musicbrainz" ? " active" : ""}`}
                 onClick={() => onChange("musicbrainz")}

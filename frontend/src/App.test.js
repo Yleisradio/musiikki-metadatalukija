@@ -4,6 +4,7 @@ import App from './App';
 import FileUpload from './components/FileUpload';
 import JsonMetadataPanel from './components/JsonMetadataPanel';
 import MainMetadataView from './components/MainMetadataView';
+import MetadataView from './components/MetadataView';
 import MetadataTabs from './components/MetadataTabs';
 
 test('renders the metadata reader and audio upload instructions', () => {
@@ -27,7 +28,16 @@ test('keeps React in control of Bootstrap tab selection', () => {
   const onChange = jest.fn();
   const { rerender } = render(<MetadataTabs activeTab="main" onChange={onChange} />);
   const musicBrainzTab = screen.getByRole('tab', { name: 'MusicBrainz-näkymä' });
+  const metadataTab = screen.getByRole('tab', { name: 'Metadatanäkymä' });
   expect(screen.getByRole('tab', { name: 'Perusnäkymä' })).toHaveClass('active');
+
+  userEvent.click(metadataTab);
+  expect(onChange).toHaveBeenCalledWith('metadata');
+  rerender(<MetadataTabs activeTab="metadata" onChange={onChange} />);
+
+  expect(metadataTab).toHaveAttribute('aria-selected', 'true');
+  expect(metadataTab).toHaveClass('active');
+  expect(screen.getByRole('tab', { name: 'Perusnäkymä' })).not.toHaveClass('active');
 
   userEvent.click(musicBrainzTab);
   expect(onChange).toHaveBeenCalledWith('musicbrainz');
@@ -49,17 +59,23 @@ test('switches between text and tree JSON inside a Bootstrap card', () => {
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
 });
 
-test('renders summary and artist metadata in responsive Bootstrap cards', () => {
+test('renders summary and artist metadata in the main view', () => {
   render(
     <MainMetadataView
       cleanData={{ title: 'Test', performers: 'Artist', songwriters: ['Writer'] }}
       artistDetails={[{ id: 'artist-1', name: 'Artist', type: 'Person' }]}
-      metadata={{ title: 'Test' }}
     />
   );
 
-  for (const title of ['Yleistiedot', 'Esittäjän lisätiedot', 'Tiedoston metadata']) {
+  for (const title of ['Yleistiedot', 'Esittäjän lisätiedot']) {
     expect(screen.getByRole('heading', { name: title }).closest('section')).toHaveClass('card');
   }
+  expect(screen.queryByRole('heading', { name: 'Tiedoston metadata' })).not.toBeInTheDocument();
   expect(screen.getByText('Writer')).toBeInTheDocument();
+});
+
+test('renders file metadata in its own view', () => {
+  render(<MetadataView metadata={{ title: 'Test' }} />);
+
+  expect(screen.getByRole('heading', { name: 'Tiedoston metadata' }).closest('section')).toHaveClass('card');
 });

@@ -1,8 +1,7 @@
 import ArtistMetadataPanel from "./ArtistMetadataPanel";
 import GeneralMetadataPanel from "./GeneralMetadataPanel";
-import JsonMetadataPanel from "./JsonMetadataPanel";
 
-function MainMetadataView({ cleanData, artistDetails, metadata }) {
+function MainMetadataView({ cleanData, artistDetails }) {
     return (
         <div className="row g-4 text-start align-items-start">
             <div className="col-12 col-md-6 col-xl-4">
@@ -16,9 +15,6 @@ function MainMetadataView({ cleanData, artistDetails, metadata }) {
                         <h2 className="card-title h5 mb-0">Esittäjän lisätiedot</h2>
                     </section>
                 )}
-            </div>
-            <div className="col-12 col-xl-4">
-                <JsonMetadataPanel title="Tiedoston metadata" data={metadata} />
             </div>
         </div>
     );

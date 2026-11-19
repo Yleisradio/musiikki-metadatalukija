@@ -5,6 +5,7 @@ import "react18-json-view/src/style.css";
 import "./App.css";
 import FileUpload from "./components/FileUpload";
 import MainMetadataView from "./components/MainMetadataView";
+import MetadataView from "./components/MetadataView";
 import MetadataTabs from "./components/MetadataTabs";
 import MusicBrainzView from "./components/MusicBrainzView";
 import { cleanText } from "./utils/metadata";
@@ -252,8 +253,9 @@ function App() {
                         <MainMetadataView
                             cleanData={cleanData}
                             artistDetails={artistDetails}
-                            metadata={metadata}
                         />
+                    ) : activeTab === "metadata" ? (
+                        <MetadataView metadata={metadata} />
                     ) : (
                         <MusicBrainzView data={musicBrainzData} artistDetails={artistDetails} />
                     )}
