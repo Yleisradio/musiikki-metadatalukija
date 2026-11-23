@@ -49,8 +49,8 @@ function MetadataFields({ value, path, onChange }) {
         if (path.length === 0) return <div>{children}</div>;
 
         return (
-            <details className="metadata-fields-group" open={path.length === 1}>
-                <summary>{path[path.length - 1]}</summary>
+            <div className="metadata-fields-group">
+                <div className="metadata-fields-group-title">{path[path.length - 1]}</div>
                 <div className="metadata-fields-children">
                     {children}
                     {isStringArray && (
@@ -63,7 +63,7 @@ function MetadataFields({ value, path, onChange }) {
                         </button>
                     )}
                 </div>
-            </details>
+            </div>
         );
     }
 

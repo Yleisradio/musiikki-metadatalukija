@@ -119,6 +119,7 @@ test('maps file metadata to the track.json shape', () => {
   expect(screen.getByLabelText('artists_publishing_ownerships / 0 / artist / full_name'))
     .toHaveValue('Songwriter');
   expect(screen.getByLabelText('custom / publication_year')).toHaveValue('2024');
+  expect(container.querySelectorAll('details')).toHaveLength(0);
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
   expect(screen.queryByRole('heading', { name: /track\.json/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'JSON-näkymä' })).not.toBeInTheDocument();

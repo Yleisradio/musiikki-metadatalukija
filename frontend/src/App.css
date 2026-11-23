@@ -88,8 +88,6 @@ body {
 }
 
 .metadata-editor {
-  max-height: min(68vh, 760px);
-  overflow: auto;
   padding-right: 4px;
 }
 
@@ -101,8 +99,7 @@ body {
   background: var(--bs-body-bg);
 }
 
-.metadata-fields-group > summary {
-  cursor: pointer;
+.metadata-fields-group-title {
   font-weight: 600;
 }
 
