@@ -4,10 +4,10 @@ import GeneralMetadataPanel from "./GeneralMetadataPanel";
 function MainMetadataView({ cleanData, artistDetails }) {
     return (
         <div className="row g-4 text-start align-items-start">
-            <div className="col-12 col-md-6 col-xl-4">
+            <div className="col-12 col-md-6 col-xl-6">
                 <GeneralMetadataPanel data={cleanData} />
             </div>
-            <div className="col-12 col-md-6 col-xl-4 d-flex flex-column gap-4">
+            <div className="col-12 col-md-6 col-xl-6 d-flex flex-column gap-4">
                 {artistDetails.length > 0 ? artistDetails.map((artist) => (
                     <ArtistMetadataPanel key={artist.id} artist={artist} />
                 )) : (

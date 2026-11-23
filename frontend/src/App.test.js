@@ -7,6 +7,7 @@ import JsonMetadataPanel from './components/JsonMetadataPanel';
 import MainMetadataView from './components/MainMetadataView';
 import MetadataView from './components/MetadataView';
 import MetadataTabs from './components/MetadataTabs';
+import { mapMetadataToTrack } from './utils/trackMetadata';
 
 jest.mock('music-metadata-browser', () => ({ parseBlob: jest.fn() }));
 
@@ -30,10 +31,10 @@ test('selects an audio file through the styled upload area', async () => {
 test('keeps React in control of Bootstrap tab selection', () => {
   const onChange = jest.fn();
   const { rerender } = render(<MetadataTabs activeTab="main" onChange={onChange} />);
-  const musicBrainzTab = screen.getByRole('tab', { name: 'MusicBrainz-näkymä' });
-  const metadataTab = screen.getByRole('tab', { name: 'Metadatanäkymä' });
+  const musicBrainzTab = screen.getByRole('tab', { name: 'MusicBrainz' });
+  const metadataTab = screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' });
   const originalTab = screen.getByRole('tab', { name: 'Alkuperäinen metadata' });
-  expect(screen.getByRole('tab', { name: 'Perusnäkymä' })).toHaveClass('active');
+  expect(screen.getByRole('tab', { name: 'Perustiedot' })).toHaveClass('active');
 
   userEvent.click(metadataTab);
   expect(onChange).toHaveBeenCalledWith('metadata');
@@ -41,7 +42,7 @@ test('keeps React in control of Bootstrap tab selection', () => {
 
   expect(metadataTab).toHaveAttribute('aria-selected', 'true');
   expect(metadataTab).toHaveClass('active');
-  expect(screen.getByRole('tab', { name: 'Perusnäkymä' })).not.toHaveClass('active');
+  expect(screen.getByRole('tab', { name: 'Perustiedot' })).not.toHaveClass('active');
 
   userEvent.click(originalTab);
   expect(onChange).toHaveBeenCalledWith('original');
@@ -55,7 +56,7 @@ test('keeps React in control of Bootstrap tab selection', () => {
 
   expect(musicBrainzTab).toHaveAttribute('aria-selected', 'true');
   expect(musicBrainzTab).toHaveClass('active');
-  expect(screen.getByRole('tab', { name: 'Perusnäkymä' })).not.toHaveClass('active');
+  expect(screen.getByRole('tab', { name: 'Perustiedot' })).not.toHaveClass('active');
 });
 
 test('switches between text and tree JSON inside a Bootstrap card', () => {
@@ -80,31 +81,71 @@ test('renders summary and artist metadata in the main view', () => {
   for (const title of ['Yleistiedot', 'Esittäjän lisätiedot']) {
     expect(screen.getByRole('heading', { name: title }).closest('section')).toHaveClass('card');
   }
+  expect(screen.getByRole('heading', { name: 'Yleistiedot' }).closest('.col-xl-6')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Esittäjän lisätiedot' }).closest('.col-xl-6')).toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Tiedoston metadata' })).not.toBeInTheDocument();
   expect(screen.getByText('Writer')).toBeInTheDocument();
 });
 
-test('edits file metadata and updates the displayed JSON', () => {
-  const onMetadataChange = jest.fn();
-  const metadata = { format: { duration: 12 }, common: { title: 'Test' } };
-  const { rerender, container } = render(
-    <MetadataView metadata={metadata} onMetadataChange={onMetadataChange} />
+test('maps file metadata to the track.json shape', () => {
+  const metadata = {
+    format: { duration: 192.4 },
+    common: {
+      title: 'Test',
+      artists: ['Artist One', 'Artist Two'],
+      album: 'Album',
+      isrc: 'US1234567890',
+      date: '2024-06-01',
+      track: { no: 3 },
+      composer: ['Songwriter'],
+      genre: ['Rock'],
+      language: 'eng',
+      year: 2024
+    }
+  };
+  const { container } = render(
+    <MetadataView
+      trackMetadata={mapMetadataToTrack(metadata)}
+      onTrackMetadataChange={jest.fn()}
+    />
   );
 
-  expect(container.querySelector('pre').textContent.indexOf('"common"'))
-    .toBeLessThan(container.querySelector('pre').textContent.indexOf('"format"'));
-  fireEvent.change(screen.getByLabelText('common / title'), { target: { value: 'Updated' } });
-
-  expect(onMetadataChange).toHaveBeenLastCalledWith({
-    common: { title: 'Updated' },
-    format: { duration: 12 }
-  });
-  rerender(<MetadataView metadata={onMetadataChange.mock.lastCall[0]} onMetadataChange={onMetadataChange} />);
-  expect(container.querySelector('pre')).toHaveTextContent('"title": "Updated"');
-  expect(screen.getByRole('heading', { name: 'Tiedoston metadata' }).closest('section')).toHaveClass('card');
+  expect(container.querySelector('section')).toHaveClass('card');
+  expect(screen.getByLabelText('title')).toHaveValue('Test');
+  expect(screen.getByLabelText('duration')).toHaveValue(192.4);
+  expect(screen.getByLabelText('display_artists / 0')).toHaveValue('Artist One');
+  expect(screen.getByLabelText('album / title')).toHaveValue('Album');
+  expect(screen.getByLabelText('track_number')).toHaveValue(3);
+  expect(screen.getByLabelText('artists_publishing_ownerships / 0 / artist / full_name'))
+    .toHaveValue('Songwriter');
+  expect(screen.getByLabelText('custom / publication_year')).toHaveValue('2024');
+  expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
+  expect(screen.queryByRole('heading', { name: /track\.json/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'JSON-näkymä' })).not.toBeInTheDocument();
 });
 
-test('shows original file metadata unchanged after editing metadata', async () => {
+test('edits mapped track fields through the form', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = { title: 'Original', custom: { genre: ['Rock'] } };
+  const { rerender, container } = render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+
+  fireEvent.change(screen.getByLabelText('title'), { target: { value: 'Edited' } });
+  expect(onTrackMetadataChange).toHaveBeenLastCalledWith({
+    title: 'Edited',
+    custom: { genre: ['Rock'] }
+  });
+  rerender(
+    <MetadataView
+      trackMetadata={onTrackMetadataChange.mock.lastCall[0]}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(container.querySelector('pre')).toHaveTextContent('"title": "Edited"');
+});
+
+test('shows original metadata separately from its track.json mapping', async () => {
   parseBlob.mockResolvedValue({
     common: { title: 'Original title' },
     format: { duration: 12 },
@@ -118,34 +159,15 @@ test('shows original file metadata unchanged after editing metadata', async () =
   );
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
 
-  userEvent.click(screen.getByRole('tab', { name: 'Metadatanäkymä' }));
-  fireEvent.change(screen.getByLabelText('common / title'), { target: { value: 'Edited title' } });
+  userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
+  fireEvent.change(screen.getByLabelText('title'), { target: { value: 'Edited title' } });
+  userEvent.click(screen.getByRole('tab', { name: 'Perustiedot' }));
   userEvent.click(screen.getByRole('tab', { name: 'Alkuperäinen metadata' }));
 
   expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
     .toHaveTextContent('"title": "Original title"');
   expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
     .toHaveTextContent('"value": "Original native title"');
-  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
-    .not.toHaveTextContent('Edited title');
-});
-
-test('selects recording country and track language metadata', () => {
-  const onMetadataChange = jest.fn();
-  const { rerender } = render(<MetadataView metadata={{ common: {} }} onMetadataChange={onMetadataChange} />);
-
-  fireEvent.change(screen.getByLabelText('Äänitysmaa'), { target: { value: 'FI' } });
-  const metadataWithCountry = onMetadataChange.mock.lastCall[0];
-  rerender(<MetadataView metadata={metadataWithCountry} onMetadataChange={onMetadataChange} />);
-  fireEvent.change(screen.getByLabelText('Kappaleen kieli'), { target: { value: 'fin' } });
-  rerender(<MetadataView metadata={onMetadataChange.mock.lastCall[0]} onMetadataChange={onMetadataChange} />);
-
-  expect(onMetadataChange).toHaveBeenNthCalledWith(1, {
-    common: { recordingcountry: 'FI' }
-  });
-  expect(onMetadataChange).toHaveBeenNthCalledWith(2, {
-    common: { recordingcountry: 'FI', language: 'fin' }
-  });
-  expect(screen.getByLabelText('Äänitysmaa')).toHaveValue('FI');
-  expect(screen.getByLabelText('Kappaleen kieli')).toHaveValue('fin');
+  userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
+  expect(screen.getByLabelText('title')).toHaveValue('Edited title');
 });

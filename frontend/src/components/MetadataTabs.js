@@ -8,7 +8,7 @@ function MetadataTabs({ activeTab, onChange }) {
                 className={`nav-link${activeTab === "main" ? " active" : ""}`}
                 onClick={() => onChange("main")}
             >
-                Perusnäkymä
+                Perustiedot
             </button>
             <button
                 type="button"
@@ -17,7 +17,7 @@ function MetadataTabs({ activeTab, onChange }) {
                 className={`nav-link${activeTab === "metadata" ? " active" : ""}`}
                 onClick={() => onChange("metadata")}
             >
-                Metadatanäkymä
+                Metadatan muokkaus ja lähetys
             </button>
             <button
                 type="button"
@@ -35,7 +35,7 @@ function MetadataTabs({ activeTab, onChange }) {
                 className={`nav-link${activeTab === "musicbrainz" ? " active" : ""}`}
                 onClick={() => onChange("musicbrainz")}
             >
-                MusicBrainz-näkymä
+                MusicBrainz
             </button>
         </div>
     );

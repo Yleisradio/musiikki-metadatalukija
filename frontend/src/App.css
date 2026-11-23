@@ -111,6 +111,17 @@ body {
   padding-left: 12px;
 }
 
+.metadata-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.metadata-field-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 .metadata-column p,
 .artist-metadata-column p {
   margin: 0 0 16px;

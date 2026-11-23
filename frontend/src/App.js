@@ -10,13 +10,14 @@ import MetadataView from "./components/MetadataView";
 import MetadataTabs from "./components/MetadataTabs";
 import MusicBrainzView from "./components/MusicBrainzView";
 import { cleanText } from "./utils/metadata";
+import { mapMetadataToTrack } from "./utils/trackMetadata";
 
 window.Buffer = Buffer;
 
 function serializeMetadata(metadata) {
     return JSON.parse(JSON.stringify(metadata, (key, value) => {
         if (key === "data" && typeof value === "object") {
-            return "Image binary data is very long so it is hidden for convenience /Teemu";
+            return "Image binary data is very long so it is hidden for convenience";
         }
         return value;
     }));
@@ -42,6 +43,7 @@ function App() {
     const [fileName, setFileName] = useState("");
     const [metadata, setMetadata] = useState(null);
     const [originalMetadata, setOriginalMetadata] = useState(null);
+    const [trackMetadata, setTrackMetadata] = useState(null);
     const [albumArt, setAlbumArt] = useState(null);
     const [musicBrainzData, setMusicBrainzData] = useState(null);
     const [activeTab, setActiveTab] = useState("main");
@@ -91,6 +93,7 @@ function App() {
         setAlbumArt(null);
         setMetadata(null);
         setOriginalMetadata(null);
+        setTrackMetadata(null);
         setMusicBrainzData(null);
         setArtistDetails([]);
 
@@ -231,7 +234,9 @@ function App() {
                 fileSize
             });
 
-            setOriginalMetadata(serializeMetadata(parsedMetadata));
+            const serializedMetadata = serializeMetadata(parsedMetadata);
+            setOriginalMetadata(serializedMetadata);
+            setTrackMetadata(mapMetadataToTrack(serializedMetadata));
 
             const combinedMetadata = {
                 ...parsedMetadata,
@@ -262,7 +267,10 @@ function App() {
                             artistDetails={artistDetails}
                         />
                     ) : activeTab === "metadata" ? (
-                        <MetadataView metadata={metadata} onMetadataChange={setMetadata} />
+                        <MetadataView
+                            trackMetadata={trackMetadata}
+                            onTrackMetadataChange={setTrackMetadata}
+                        />
                     ) : activeTab === "original" ? (
                         <div className="row g-4 text-start align-items-start">
                             <div className="col-12">

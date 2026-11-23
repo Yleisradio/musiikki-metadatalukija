@@ -1,87 +1,49 @@
-import JsonMetadataPanel from "./JsonMetadataPanel";
-
-const recordingCountries = [
-    ["FI", "Suomi"],
-    ["SE", "Ruotsi"],
-    ["NO", "Norja"],
-    ["DK", "Tanska"],
-    ["IS", "Islanti"],
-    ["EE", "Viro"],
-    ["DE", "Saksa"],
-    ["GB", "Yhdistynyt kuningaskunta"],
-    ["US", "Yhdysvallat"],
-    ["CA", "Kanada"],
-    ["FR", "Ranska"],
-    ["ES", "Espanja"],
-    ["IT", "Italia"],
-    ["JP", "Japani"],
-    ["AU", "Australia"]
-];
-
-const trackLanguages = [
-    ["fin", "Suomi"],
-    ["swe", "Ruotsi"],
-    ["eng", "Englanti"],
-    ["nor", "Norja"],
-    ["dan", "Tanska"],
-    ["est", "Viro"],
-    ["deu", "Saksa"],
-    ["fra", "Ranska"],
-    ["spa", "Espanja"],
-    ["ita", "Italia"],
-    ["por", "Portugali"],
-    ["jpn", "Japani"],
-    ["kor", "Korea"],
-    ["zho", "Kiina"],
-    ["rus", "Venäjä"]
-];
-
-function updateMetadataValue(metadata, path, nextValue) {
-    const updated = Array.isArray(metadata) ? [...metadata] : { ...metadata };
+function updateTrackValue(track, path, nextValue) {
     const [key, ...remainingPath] = path;
+    const updated = Array.isArray(track) ? [...track] : { ...track };
 
     updated[key] = remainingPath.length
-        ? updateMetadataValue(metadata[key], remainingPath, nextValue)
+        ? updateTrackValue(track[key], remainingPath, nextValue)
         : nextValue;
 
     return updated;
 }
 
-function orderedMetadataEntries(value) {
-    const entries = Array.isArray(value) ? value.map((item, index) => [index, item]) : Object.entries(value);
-    return entries.sort(([firstKey], [secondKey]) => (
-        firstKey === "common" ? -1 : secondKey === "common" ? 1 : 0
-    ));
-}
-
-function orderRootMetadata(metadata) {
-    if (
-        !metadata ||
-        Array.isArray(metadata) ||
-        typeof metadata !== "object" ||
-        !Object.prototype.hasOwnProperty.call(metadata, "common")
-    ) {
-        return metadata;
-    }
-
-    return {
-        common: metadata.common,
-        ...Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== "common"))
-    };
-}
-
 function MetadataFields({ value, path, onChange }) {
     if (value !== null && typeof value === "object") {
-        const entries = orderedMetadataEntries(value);
+        const entries = Array.isArray(value)
+            ? value.map((item, index) => [index, item])
+            : Object.entries(value);
+        const stringArrayFields = [
+            "descriptions",
+            "display_artists",
+            "display_artists_aliases",
+            "display_artists_full_names",
+            "territories",
+            "genre",
+            "languages"
+        ];
+        const isStringArray = Array.isArray(value) && stringArrayFields.includes(path[path.length - 1]);
         const children = entries.length > 0 ? entries.map(([key, childValue]) => (
-            <MetadataFields
-                key={`${path.join(".")}.${key}`}
-                value={childValue}
-                path={[...path, key]}
-                onChange={onChange}
-            />
+            <div className="metadata-field-row" key={`${path.join(".")}.${key}`}>
+                <MetadataFields
+                    value={childValue}
+                    path={[...path, key]}
+                    onChange={onChange}
+                />
+                {isStringArray && (
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        aria-label={`Poista ${path.join(" / ")} ${Number(key) + 1}`}
+                        onClick={() => onChange(path, value.filter((_, index) => index !== key))}
+                    >
+                        Poista
+                    </button>
+                )}
+            </div>
         )) : (
-            <p className="text-body-secondary mb-0">Ei muokattavia kenttiä.</p>
+            <p className="text-body-secondary mb-2">Ei arvoja.</p>
         );
 
         if (path.length === 0) return <div>{children}</div>;
@@ -89,42 +51,29 @@ function MetadataFields({ value, path, onChange }) {
         return (
             <details className="metadata-fields-group" open={path.length === 1}>
                 <summary>{path[path.length - 1]}</summary>
-                <div className="metadata-fields-children">{children}</div>
+                <div className="metadata-fields-children">
+                    {children}
+                    {isStringArray && (
+                        <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => onChange(path, [...value, ""])}
+                        >
+                            Lisää arvo
+                        </button>
+                    )}
+                </div>
             </details>
         );
     }
 
-    const label = path.join(" / ");
-    const inputId = `metadata-field-${path.join("-")}`;
-    const dropdownOptions = path.length === 2 && path[0] === "common"
-        ? path[1] === "recordingcountry"
-            ? recordingCountries
-            : path[1] === "language"
-                ? trackLanguages
-                : null
-        : null;
+    const fieldPath = path.join(" / ");
+    const inputId = `track-field-${path.join("-")}`;
 
     return (
         <div className="mb-3">
-            <label className="form-label" htmlFor={inputId}>
-                {path[1] === "recordingcountry" ? "Äänitysmaa" : path[1] === "language" ? "Kappaleen kieli" : label}
-            </label>
-            {dropdownOptions ? (
-                <select
-                    id={inputId}
-                    className="form-select"
-                    value={value ?? ""}
-                    onChange={(event) => onChange(path, event.target.value)}
-                >
-                    <option value="">Ei valittu</option>
-                    {value && !dropdownOptions.some(([code]) => code === value) && (
-                        <option value={value}>{value}</option>
-                    )}
-                    {dropdownOptions.map(([code, name]) => (
-                        <option key={code} value={code}>{name}</option>
-                    ))}
-                </select>
-            ) : typeof value === "boolean" ? (
+            <label className="form-label" htmlFor={inputId}>{fieldPath}</label>
+            {typeof value === "boolean" ? (
                 <div className="form-check">
                     <input
                         id={inputId}
@@ -153,34 +102,24 @@ function MetadataFields({ value, path, onChange }) {
     );
 }
 
-function MetadataView({ metadata, onMetadataChange }) {
+function MetadataView({ trackMetadata, onTrackMetadataChange }) {
     const handleFieldChange = (path, value) => {
-        onMetadataChange(updateMetadataValue(metadata, path, value));
+        onTrackMetadataChange(updateTrackValue(trackMetadata, path, value));
     };
-    const orderedMetadata = orderRootMetadata(metadata);
-    const displayedMetadata = orderedMetadata?.common
-        ? {
-            ...orderedMetadata,
-            common: {
-                ...orderedMetadata.common,
-                recordingcountry: orderedMetadata.common.recordingcountry ?? "",
-                language: orderedMetadata.common.language ?? ""
-            }
-        }
-        : orderedMetadata;
 
     return (
         <div className="row g-4 text-start align-items-start">
             <div className="col-12 col-xl-6">
                 <section className="card card-body shadow-sm metadata-card">
-                    <h2 className="card-title h5">Muokkaa metadataa</h2>
                     <div className="metadata-editor">
-                        <MetadataFields value={displayedMetadata} path={[]} onChange={handleFieldChange} />
+                        <MetadataFields value={trackMetadata} path={[]} onChange={handleFieldChange} />
                     </div>
                 </section>
             </div>
             <div className="col-12 col-xl-6">
-                <JsonMetadataPanel title="Tiedoston metadata" data={displayedMetadata} />
+                <div className="json-content">
+                    <pre className="mb-0">{JSON.stringify(trackMetadata, null, 2)}</pre>
+                </div>
             </div>
         </div>
     );

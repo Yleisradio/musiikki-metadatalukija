@@ -10,6 +10,8 @@ Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetä�
 - **Tiedostoon tallennettujen metatietojen lukeminen:** Hyödyntää `music-metadata-browser`-kirjastoa esimerkiksi kappaleen nimen, esittäjien, albumin, uranumeron, tekijöiden, julkaisuvuoden, ISRC-koodin, musiikkilajin ja levymerkkitietojen lukemiseen, kun tiedot ovat saatavilla.
 - **Unicode-normalisointi:** Normalisoi tekstikenttiä Unicode NFC -muotoon. Esimerkiksi ä-, ö- ja å-kirjainten erilliset kirjain- ja tarkemerkit yhdistetään yhtenäiseen esitysmuotoon.
 - **Yleistiedot:** Näyttää tiedostosta saadut (oleelliset) metatiedot jäsenneltynä.
+- **Metadatanäkymä:** Muuntaa tiedostometadatan track.json-rakenteeseen saatavilla olevien kappale-, albumi-, esittäjä- ja custom-tietojen osalta. Järjestelmäkohtaisia tunnisteita ja oikeustietoja ei päätellä puuttuvasta lähdedatasta.
+- **Muokkaus ja lähetys:** Track-metadataa voi muokata lomakkeella ja kopioida Tempo CMS:ään.
 - **MusicBrainz-haku:** Hakee ISRC-tunnuksen perusteella MusicBrainzista täydentäviä metatietoja.
 - **Esittäjän lisätiedot:** Näyttää MusicBrainzista löytyviä metatietoja esittäjästä.
 - **Kaksi JSON-esitystapaa:** Metatietoja voi tarkastella tekstimuotoisena JSONina tai avattavana puurakenteena.
