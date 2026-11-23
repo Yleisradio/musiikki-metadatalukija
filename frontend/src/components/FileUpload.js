@@ -1,10 +1,11 @@
 import { useDropzone } from "react-dropzone";
 import AlbumArt from "./AlbumArt";
 
-function FileUpload({ fileName, imageUrl, onFileSelected }) {
+function FileUpload({ fileName, imageUrl, onFileSelected, onFileRejected }) {
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop: (acceptedFiles) => {
+        onDrop: (acceptedFiles, fileRejections) => {
             if (acceptedFiles.length > 0) onFileSelected(acceptedFiles[0]);
+            if (fileRejections.length > 0) onFileRejected?.(fileRejections);
         },
         accept: { "audio/*": [] },
         multiple: false

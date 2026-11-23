@@ -7,12 +7,21 @@ import JsonMetadataPanel from './components/JsonMetadataPanel';
 import MainMetadataView from './components/MainMetadataView';
 import MetadataView from './components/MetadataView';
 import MetadataTabs from './components/MetadataTabs';
+import { NotificationProvider } from './components/Notifications';
 import { mapMetadataToTrack } from './utils/trackMetadata';
 
 jest.mock('music-metadata-browser', () => ({ parseBlob: jest.fn() }));
 
+function renderApp() {
+  return render(
+    <NotificationProvider>
+      <App />
+    </NotificationProvider>
+  );
+}
+
 test('renders the metadata reader and audio upload instructions', () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByRole('heading', { name: /metatietolukija/i })).toBeInTheDocument();
   expect(screen.getByText(/pudota audiotiedosto tai klikkaa tästä/i)).toBeInTheDocument();
 });
@@ -152,7 +161,7 @@ test('shows original metadata separately from its track.json mapping', async () 
     format: { duration: 12 },
     native: { id3v2: [{ id: 'TIT2', value: 'Original native title' }] }
   });
-  render(<App />);
+  renderApp();
 
   userEvent.upload(
     screen.getByLabelText('Valitse audiotiedosto'),
@@ -171,4 +180,18 @@ test('shows original metadata separately from its track.json mapping', async () 
     .toHaveTextContent('"value": "Original native title"');
   userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
   expect(screen.getByLabelText('title')).toHaveValue('Edited title');
+});
+
+test('notifies the user when metadata cannot be read', async () => {
+  parseBlob.mockRejectedValue(new Error('Invalid audio file'));
+  renderApp();
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['invalid'], 'broken.mp3', { type: 'audio/mpeg' })
+  );
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Tiedoston metatietoja ei voitu lukea. Tarkista tiedosto ja yritä uudelleen.'
+  );
 });

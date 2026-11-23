@@ -9,6 +9,7 @@ import MainMetadataView from "./components/MainMetadataView";
 import MetadataView from "./components/MetadataView";
 import MetadataTabs from "./components/MetadataTabs";
 import MusicBrainzView from "./components/MusicBrainzView";
+import { useNotification } from "./components/Notifications";
 import { cleanText } from "./utils/metadata";
 import { mapMetadataToTrack } from "./utils/trackMetadata";
 
@@ -40,6 +41,7 @@ const initialCleanData = {
 };
 
 function App() {
+    const notify = useNotification();
     const [fileName, setFileName] = useState("");
     const [metadata, setMetadata] = useState(null);
     const [originalMetadata, setOriginalMetadata] = useState(null);
@@ -50,7 +52,7 @@ function App() {
     const [cleanData, setCleanData] = useState(initialCleanData);
     const [artistDetails, setArtistDetails] = useState([]);
 
-    const fetchMusicBrainzData = async (isrc) => {
+    const fetchMusicBrainzData = useCallback(async (isrc) => {
         if (!isrc || isrc === "Tuntematon ISRC") return;
         try {
             const response = await fetch(`https://musicbrainz.org/ws/2/recording/?query=isrc:${isrc}&fmt=json`);
@@ -83,8 +85,9 @@ function App() {
             console.error("MusicBrainz fetch error:", error);
             setMusicBrainzData({ error: "No data found or failed to fetch." });
             setArtistDetails([]);
+            notify("MusicBrainz-tietojen hakeminen epäonnistui.", "warning");
         }
-    };
+    }, [notify]);
 
     const handleFileUpload = useCallback(async (file) => {
         if (!file) return;
@@ -251,13 +254,19 @@ function App() {
             fetchMusicBrainzData(isrc);
         } catch (error) {
             console.error("Error reading metadata:", error);
+            notify("Tiedoston metatietoja ei voitu lukea. Tarkista tiedosto ja yritä uudelleen.", "danger");
         }
-    }, []);
+    }, [fetchMusicBrainzData, notify]);
 
     return (
         <main className="container-fluid app-shell">
             <h1>Musiikin metatietolukija</h1>
-            <FileUpload fileName={fileName} imageUrl={albumArt} onFileSelected={handleFileUpload} />
+            <FileUpload
+                fileName={fileName}
+                imageUrl={albumArt}
+                onFileSelected={handleFileUpload}
+                onFileRejected={() => notify("Valitse tuettu audiotiedosto.", "danger")}
+            />
             {metadata && (
                 <>
                     <MetadataTabs activeTab={activeTab} onChange={setActiveTab} />
