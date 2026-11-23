@@ -24,6 +24,14 @@ function serializeMetadata(metadata) {
     }));
 }
 
+function hasItunesMetadata(metadata) {
+    return Object.values(metadata.native ?? {}).some((tags) =>
+        tags.some(({ id = "" }) =>
+            /com\.apple\.itunes/i.test(id) || /^(cnid|plid)$/i.test(id)
+        )
+    );
+}
+
 const initialCleanData = {
     title: "",
     titleId: "",
@@ -99,9 +107,15 @@ function App() {
         setTrackMetadata(null);
         setMusicBrainzData(null);
         setArtistDetails([]);
+        setCleanData(initialCleanData);
 
         try {
             const parsedMetadata = await parseBlob(file);
+            if (!hasItunesMetadata(parsedMetadata)) {
+                notify("Tiedostosta ei löytynyt iTunes-lataukseen viittaavia metatietoja.", "danger");
+                return;
+            }
+
             const picture = parsedMetadata.common?.picture?.[0];
             if (picture) {
                 const base64String = btoa(

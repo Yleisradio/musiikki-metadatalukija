@@ -159,7 +159,10 @@ test('shows original metadata separately from its track.json mapping', async () 
   parseBlob.mockResolvedValue({
     common: { title: 'Original title' },
     format: { duration: 12 },
-    native: { id3v2: [{ id: 'TIT2', value: 'Original native title' }] }
+    native: {
+      id3v2: [{ id: 'TIT2', value: 'Original native title' }],
+      mp4: [{ id: 'cnID', value: 12345 }]
+    }
   });
   renderApp();
 
@@ -180,6 +183,55 @@ test('shows original metadata separately from its track.json mapping', async () 
     .toHaveTextContent('"value": "Original native title"');
   userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
   expect(screen.getByLabelText('title')).toHaveValue('Edited title');
+});
+
+test('notifies when the audio file has no iTunes metadata markers', async () => {
+  parseBlob
+    .mockResolvedValueOnce({
+      common: { title: 'Previous track' },
+      native: { mp4: [{ id: 'cnID', value: 12345 }] }
+    })
+    .mockResolvedValueOnce({
+      common: { title: 'Test' },
+      native: { id3v2: [{ id: 'TIT2', value: 'Test' }] }
+    });
+  renderApp();
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'previous.m4a', { type: 'audio/mp4' })
+  );
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
+  expect(screen.getAllByText('Previous track').length).toBeGreaterThan(0);
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'test.mp3', { type: 'audio/mpeg' })
+  );
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Tiedostosta ei löytynyt iTunes-lataukseen viittaavia metatietoja.'
+  );
+  expect(screen.queryByRole('tab', { name: 'Alkuperäinen metadata' })).not.toBeInTheDocument();
+  expect(screen.queryByText('Previous track')).not.toBeInTheDocument();
+  expect(screen.queryByText('Test')).not.toBeInTheDocument();
+});
+
+test('does not notify when the audio file has iTunes metadata markers', async () => {
+  parseBlob.mockResolvedValue({
+    common: { title: 'Test' },
+    native: { mp4: [{ id: 'cnID', value: 12345 }] }
+  });
+  renderApp();
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'test.m4a', { type: 'audio/mp4' })
+  );
+
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
+  expect(screen.queryByText('Tiedostosta ei löytynyt iTunes-lataukseen viittaavia metatietoja.'))
+    .not.toBeInTheDocument();
 });
 
 test('notifies the user when metadata cannot be read', async () => {
