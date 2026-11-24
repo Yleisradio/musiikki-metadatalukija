@@ -277,7 +277,6 @@ function App() {
             <h1>Musiikin metatietolukija</h1>
             <FileUpload
                 fileName={fileName}
-                imageUrl={albumArt}
                 onFileSelected={handleFileUpload}
                 onFileRejected={() => notify("Valitse tuettu audiotiedosto.", "danger")}
             />
@@ -288,6 +287,7 @@ function App() {
                         <MainMetadataView
                             cleanData={cleanData}
                             artistDetails={artistDetails}
+                            albumArt={albumArt}
                         />
                     ) : activeTab === "metadata" ? (
                         <MetadataView

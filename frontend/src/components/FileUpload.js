@@ -1,7 +1,6 @@
 import { useDropzone } from "react-dropzone";
-import AlbumArt from "./AlbumArt";
 
-function FileUpload({ fileName, imageUrl, onFileSelected, onFileRejected }) {
+function FileUpload({ fileName, onFileSelected, onFileRejected }) {
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop: (acceptedFiles, fileRejections) => {
             if (acceptedFiles.length > 0) onFileSelected(acceptedFiles[0]);
@@ -14,9 +13,6 @@ function FileUpload({ fileName, imageUrl, onFileSelected, onFileRejected }) {
     return (
         <>
             <div className="row g-3 align-items-center justify-content-center upload-header-row mx-auto mb-3">
-                <div className="col-12 col-sm-auto">
-                    <AlbumArt imageUrl={imageUrl} />
-                </div>
                 <div className="col-12 col-sm">
                     <div className={`upload-area rounded-3 p-4 d-flex align-items-center justify-content-center${isDragActive ? " upload-area-active" : ""}`} {...getRootProps()}>
                         <input {...getInputProps({ "aria-label": "Valitse audiotiedosto" })} />

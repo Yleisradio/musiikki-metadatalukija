@@ -37,6 +37,17 @@ test('selects an audio file through the styled upload area', async () => {
   expect(screen.getByText('test.mp3')).toBeInTheDocument();
 });
 
+test('hides the album art frame until an image is available', () => {
+  const cleanData = { songwriters: [] };
+  const { rerender } = render(<MainMetadataView cleanData={cleanData} artistDetails={[]} />);
+  expect(screen.queryByAltText('Albumin kansikuva')).not.toBeInTheDocument();
+
+  rerender(
+    <MainMetadataView cleanData={cleanData} artistDetails={[]} albumArt="data:image/jpeg;base64,abc" />
+  );
+  expect(screen.getByAltText('Albumin kansikuva')).toBeInTheDocument();
+});
+
 test('keeps React in control of Bootstrap tab selection', () => {
   const onChange = jest.fn();
   const { rerender } = render(<MetadataTabs activeTab="main" onChange={onChange} />);

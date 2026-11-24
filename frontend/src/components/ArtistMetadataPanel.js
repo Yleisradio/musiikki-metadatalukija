@@ -7,9 +7,10 @@ import {
     getRelationValues
 } from "../utils/artistMetadata";
 import { formatFinnishDate } from "../utils/metadata";
+import AlbumArt from "./AlbumArt";
 import RelationList from "./RelationList";
 
-function ArtistMetadataPanel({ artist }) {
+function ArtistMetadataPanel({ artist, albumArt }) {
     const legalNameAliases = getAliasesByType(artist, "Legal name");
     const artistNameAliases = getAliasesByType(artist, "Artist name");
     const searchHintAliases = getMeaningfulSearchHints(artist);
@@ -26,6 +27,7 @@ function ArtistMetadataPanel({ artist }) {
     return (
         <section className="card card-body shadow-sm metadata-card artist-metadata-clean">
             <h2 className="card-title h5">Esittäjän lisätiedot</h2>
+            {albumArt && <AlbumArt imageUrl={albumArt} />}
             <div className="row g-3">
                 <div className="col-12 col-sm-6 artist-metadata-column">
                     <p><strong>Nimi:</strong><br />{artist.name || ""}</p>
