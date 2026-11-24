@@ -8,7 +8,6 @@ import JsonMetadataPanel from "./components/JsonMetadataPanel";
 import MainMetadataView from "./components/MainMetadataView";
 import MetadataView from "./components/MetadataView";
 import MetadataTabs from "./components/MetadataTabs";
-import MusicBrainzView from "./components/MusicBrainzView";
 import { useNotification } from "./components/Notifications";
 import { cleanText } from "./utils/metadata";
 import { mapMetadataToTrack } from "./utils/trackMetadata";
@@ -55,47 +54,8 @@ function App() {
     const [originalMetadata, setOriginalMetadata] = useState(null);
     const [trackMetadata, setTrackMetadata] = useState(null);
     const [albumArt, setAlbumArt] = useState(null);
-    const [musicBrainzData, setMusicBrainzData] = useState(null);
     const [activeTab, setActiveTab] = useState("main");
     const [cleanData, setCleanData] = useState(initialCleanData);
-    const [artistDetails, setArtistDetails] = useState([]);
-
-    const fetchMusicBrainzData = useCallback(async (isrc) => {
-        if (!isrc || isrc === "Tuntematon ISRC") return;
-        try {
-            const response = await fetch(`https://musicbrainz.org/ws/2/recording/?query=isrc:${isrc}&fmt=json`);
-            if (!response.ok) throw new Error("Failed to fetch MusicBrainz data");
-            const data = await response.json();
-
-            setMusicBrainzData(data);
-
-            const artistIds = [];
-            data.recordings?.forEach((recording) => {
-                recording["artist-credit"]?.forEach((credit) => {
-                    if (credit.artist?.id) artistIds.push(credit.artist.id);
-                });
-            });
-            const uniqueArtistIds = [...new Set(artistIds)];
-            const fetchedArtists = await Promise.all(
-                uniqueArtistIds.map(async (artistId) => {
-                    const artistResponse = await fetch(
-                        `https://musicbrainz.org/ws/2/artist/${artistId}?fmt=json&inc=aliases+tags+ratings+url-rels+artist-rels`
-                    );
-                    if (!artistResponse.ok) {
-                        console.error(`Failed to fetch artist data for ${artistId}`);
-                        return { id: artistId, error: "Fetch failed" };
-                    }
-                    return artistResponse.json();
-                })
-            );
-            setArtistDetails(fetchedArtists);
-        } catch (error) {
-            console.error("MusicBrainz fetch error:", error);
-            setMusicBrainzData({ error: "No data found or failed to fetch." });
-            setArtistDetails([]);
-            notify("MusicBrainz-tietojen hakeminen epäonnistui.", "warning");
-        }
-    }, [notify]);
 
     const handleFileUpload = useCallback(async (file) => {
         if (!file) return;
@@ -105,8 +65,6 @@ function App() {
         setMetadata(null);
         setOriginalMetadata(null);
         setTrackMetadata(null);
-        setMusicBrainzData(null);
-        setArtistDetails([]);
         setCleanData(initialCleanData);
 
         try {
@@ -265,12 +223,11 @@ function App() {
                 }
             };
             setMetadata(serializeMetadata(combinedMetadata));
-            fetchMusicBrainzData(isrc);
         } catch (error) {
             console.error("Error reading metadata:", error);
             notify("Tiedoston metatietoja ei voitu lukea. Tarkista tiedosto ja yritä uudelleen.", "danger");
         }
-    }, [fetchMusicBrainzData, notify]);
+    }, [notify]);
 
     return (
         <main className="container-fluid app-shell">
@@ -286,7 +243,6 @@ function App() {
                     {activeTab === "main" ? (
                         <MainMetadataView
                             cleanData={cleanData}
-                            artistDetails={artistDetails}
                             albumArt={albumArt}
                         />
                     ) : activeTab === "metadata" ? (
@@ -294,14 +250,12 @@ function App() {
                             trackMetadata={trackMetadata}
                             onTrackMetadataChange={setTrackMetadata}
                         />
-                    ) : activeTab === "original" ? (
+                    ) : (
                         <div className="row g-4 text-start align-items-start">
                             <div className="col-12">
                                 <JsonMetadataPanel title="Alkuperäinen metadata" data={originalMetadata} />
                             </div>
                         </div>
-                    ) : (
-                        <MusicBrainzView data={musicBrainzData} artistDetails={artistDetails} />
                     )}
                 </>
             )}

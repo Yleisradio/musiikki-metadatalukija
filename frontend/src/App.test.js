@@ -39,21 +39,21 @@ test('selects an audio file through the styled upload area', async () => {
 
 test('hides the album art frame until an image is available', () => {
   const cleanData = { songwriters: [] };
-  const { rerender } = render(<MainMetadataView cleanData={cleanData} artistDetails={[]} />);
+  const { rerender } = render(<MainMetadataView cleanData={cleanData} />);
   expect(screen.queryByAltText('Albumin kansikuva')).not.toBeInTheDocument();
 
   rerender(
-    <MainMetadataView cleanData={cleanData} artistDetails={[]} albumArt="data:image/jpeg;base64,abc" />
+    <MainMetadataView cleanData={cleanData} albumArt="data:image/jpeg;base64,abc" />
   );
   expect(screen.getByAltText('Albumin kansikuva')).toBeInTheDocument();
 });
 
-test('keeps React in control of Bootstrap tab selection', () => {
+test('keeps React in control of the three metadata tabs', () => {
   const onChange = jest.fn();
   const { rerender } = render(<MetadataTabs activeTab="main" onChange={onChange} />);
-  const musicBrainzTab = screen.getByRole('tab', { name: 'MusicBrainz' });
   const metadataTab = screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' });
   const originalTab = screen.getByRole('tab', { name: 'Alkuperäinen metadata' });
+  expect(screen.getAllByRole('tab')).toHaveLength(3);
   expect(screen.getByRole('tab', { name: 'Perustiedot' })).toHaveClass('active');
 
   userEvent.click(metadataTab);
@@ -69,14 +69,6 @@ test('keeps React in control of Bootstrap tab selection', () => {
   rerender(<MetadataTabs activeTab="original" onChange={onChange} />);
   expect(originalTab).toHaveAttribute('aria-selected', 'true');
   expect(originalTab).toHaveClass('active');
-
-  userEvent.click(musicBrainzTab);
-  expect(onChange).toHaveBeenCalledWith('musicbrainz');
-  rerender(<MetadataTabs activeTab="musicbrainz" onChange={onChange} />);
-
-  expect(musicBrainzTab).toHaveAttribute('aria-selected', 'true');
-  expect(musicBrainzTab).toHaveClass('active');
-  expect(screen.getByRole('tab', { name: 'Perustiedot' })).not.toHaveClass('active');
 });
 
 test('switches between text and tree JSON inside a Bootstrap card', () => {
@@ -90,19 +82,18 @@ test('switches between text and tree JSON inside a Bootstrap card', () => {
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
 });
 
-test('renders summary and artist metadata in the main view', () => {
+test('renders summary metadata and album art in the main view', () => {
   render(
     <MainMetadataView
       cleanData={{ title: 'Test', performers: 'Artist', songwriters: ['Writer'] }}
-      artistDetails={[{ id: 'artist-1', name: 'Artist', type: 'Person' }]}
+      albumArt="data:image/jpeg;base64,abc"
     />
   );
 
-  for (const title of ['Yleistiedot', 'Esittäjän lisätiedot']) {
-    expect(screen.getByRole('heading', { name: title }).closest('section')).toHaveClass('card');
-  }
+  expect(screen.getByRole('heading', { name: 'Yleistiedot' }).closest('section')).toHaveClass('card');
   expect(screen.getByRole('heading', { name: 'Yleistiedot' }).closest('.col-xl-6')).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: 'Esittäjän lisätiedot' }).closest('.col-xl-6')).toBeInTheDocument();
+  expect(screen.getByAltText('Albumin kansikuva')).toBeInTheDocument();
+  expect(screen.queryByText('Esittäjän lisätiedot')).not.toBeInTheDocument();
   expect(screen.queryByRole('heading', { name: 'Tiedoston metadata' })).not.toBeInTheDocument();
   expect(screen.getByText('Writer')).toBeInTheDocument();
 });

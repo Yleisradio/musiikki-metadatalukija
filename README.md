@@ -1,6 +1,6 @@
 # Metatietolukija
 
-React-sovellus lukee audiotiedoston metatiedot ja esittää oleellisimmat niistä jäsenneltynä, käyttämällä kirjastoa music-metadata-browser. Sovellus esittää myös kirjaston palauttamat metatiedot muokkaamattomana omassa sarakkeessaan (pois lukien kuvien binääridata), ja hakee lisäksi täydentäviä metatietoja MusicBrainzista.
+React-sovellus lukee audiotiedoston metatiedot ja esittää oleellisimmat niistä jäsenneltynä, käyttämällä kirjastoa music-metadata-browser. Sovellus esittää myös kirjaston palauttamat metatiedot muokkaamattomana omassa sarakkeessaan (pois lukien kuvien binääridata).
 
 Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetään Tempo CMS:ään, jossa niitä voidaan myös editoida. Sovellus on päivittäisessä tuotantokäytössä Yle Arkistossa.
 
@@ -12,8 +12,6 @@ Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetä�
 - **Yleistiedot:** Näyttää tiedostosta saadut (oleelliset) metatiedot jäsenneltynä.
 - **Metadatanäkymä:** Muuntaa tiedostometadatan track.json-rakenteeseen saatavilla olevien kappale-, albumi-, esittäjä- ja custom-tietojen osalta. Järjestelmäkohtaisia tunnisteita ja oikeustietoja ei päätellä puuttuvasta lähdedatasta.
 - **Muokkaus ja lähetys:** Track-metadataa voi muokata lomakkeella ja kopioida Tempo CMS:ään.
-- **MusicBrainz-haku:** Hakee ISRC-tunnuksen perusteella MusicBrainzista täydentäviä metatietoja.
-- **Esittäjän lisätiedot:** Näyttää MusicBrainzista löytyviä metatietoja esittäjästä.
 - **Kaksi JSON-esitystapaa:** Metatietoja voi tarkastella tekstimuotoisena JSONina tai avattavana puurakenteena.
 - **Kappale- ja albumitietojen Apple Music -linkit:** Muodostaa linkit julkaisun Apple Music -sivulle, jos tiedostoon on tallennettu vastaavat Apple-tunnisteet.
 

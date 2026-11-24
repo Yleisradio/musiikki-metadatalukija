@@ -124,20 +124,17 @@ body {
   min-width: 0;
 }
 
-.metadata-column p,
-.artist-metadata-column p {
+.metadata-column p {
   margin: 0 0 16px;
   font-size: 0.9rem;
   line-height: 1.5;
 }
 
-.metadata-column > :last-child,
-.artist-metadata-column > :last-child {
+.metadata-column > :last-child {
   margin-bottom: 0;
 }
 
-.metadata-column strong,
-.artist-metadata-column strong {
+.metadata-column strong {
   display: inline-block;
   margin-bottom: 2px;
 }
