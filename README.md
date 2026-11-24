@@ -42,3 +42,8 @@ frontendin `/api/`-pyynnöt välitetään backendille.
 
 Backendin TypeScript-koodin voi kääntää hakemistossa `backend/` komennolla
 `npm run build`.
+
+## Kubernetes
+
+Ohjeet paikallisen Kubernetes-ympäristön käynnistämiseen sekä palvelimelle tai
+OpenShift-klusteriin asentamiseen ovat tiedostossa [infra/README.md](infra/README.md).

@@ -6,5 +6,6 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
+USER 1000
 EXPOSE 3001
 CMD ["node", "dist/server.js"]
