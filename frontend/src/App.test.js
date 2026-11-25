@@ -131,7 +131,7 @@ test('maps file metadata to the album and track fields required for sending', ()
   expect(screen.getByLabelText('Kappaleen nimi')).toHaveValue('Test');
   expect(screen.getByLabelText('Uranumero')).toHaveValue(3);
   expect(screen.getByLabelText('Esittäjän nimi')).toHaveValue('Artist One, Artist Two');
-  expect(screen.getByLabelText('Albumin nimi')).toHaveValue('');
+  expect(screen.getByLabelText('Albumin nimi')).toHaveValue(' ');
   expect(container.querySelector('#metadata-author-name-0'))
     .toHaveValue('Songwriter');
   expect(screen.getByLabelText('Rooli')).toHaveValue('author');
@@ -162,7 +162,7 @@ test('maps file metadata to the album and track fields required for sending', ()
         yle_master: false
       },
       album: {
-        title: '',
+        title: ' ',
         artists_master_ownerships: [{
           artist: { full_name: 'Artist One, Artist Two' }
         }],
@@ -179,6 +179,39 @@ test('maps file metadata to the album and track fields required for sending', ()
     }]
   });
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
+});
+
+test('keeps the album title non-empty while editing', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: {} }));
+  const { rerender } = render(
+    <MetadataView
+      trackMetadata={trackMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  const albumTitle = screen.getByLabelText('Albumin nimi');
+
+  fireEvent.change(albumTitle, { target: { value: ' Albumin nimi' } });
+  let updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  expect(updatedMetadata.tracks[0].album.title).toBe('Albumin nimi');
+  rerender(
+    <MetadataView
+      trackMetadata={updatedMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+
+  fireEvent.change(screen.getByLabelText('Albumin nimi'), { target: { value: '' } });
+  updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  expect(updatedMetadata.tracks[0].album.title).toBe(' ');
+  rerender(
+    <MetadataView
+      trackMetadata={updatedMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(screen.getByLabelText('Albumin nimi')).toHaveValue(' ');
 });
 
 test('parses multiple composers and lets the user add and edit authors', () => {

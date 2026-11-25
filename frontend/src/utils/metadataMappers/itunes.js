@@ -102,7 +102,7 @@ export function mapItunesMetadataToTrack(metadata) {
                 yle_master: false
             },
             album: {
-                title: "",
+                title: " ",
                 artists_master_ownerships: [{
                     artist: { full_name: artistName }
                 }],

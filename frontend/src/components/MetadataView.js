@@ -69,7 +69,7 @@ const fields = [
         sourcePath: ["common", "track", "no"],
         updateTrackCatalogNumber: true
     },
-    { label: "Albumin nimi", path: ["album", "title"] },
+    { label: "Albumin nimi", path: ["album", "title"], emptyValueFallback: " " },
     {
         label: "Esittäjän nimi",
         path: ["artists_master_ownerships", 0, "artist", "full_name"],
@@ -161,6 +161,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
         disabled,
         disabledWithTrackNumber,
         updateTrackCatalogNumber,
+        emptyValueFallback,
         columnClass: fieldColumnClass,
         sourcePath
     }) => {
@@ -215,8 +216,17 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                     ? ""
                                     : Number(event.target.value))
                                 : event.target.value;
+                            const isInitialFallback = emptyValueFallback
+                                && value === emptyValueFallback
+                                && typeof nextValue === "string"
+                                && nextValue.startsWith(emptyValueFallback);
+                            const normalizedValue = emptyValueFallback
+                                ? (isInitialFallback
+                                    ? nextValue.slice(emptyValueFallback.length) || emptyValueFallback
+                                    : nextValue || emptyValueFallback)
+                                : nextValue;
                             if (updateTrackCatalogNumber) {
-                                let updatedMetadata = updateTrackValue(trackMetadata, trackPath, nextValue);
+                                let updatedMetadata = updateTrackValue(trackMetadata, trackPath, normalizedValue);
                                 const nextTrackNumber = getValue(updatedMetadata, ["tracks", 0, "track_number"]);
                                 const albumCatalogNumber = getValue(updatedMetadata, ["tracks", 0, "album", "custom", "CustomID"]);
                                 if (hasTrackNumber(nextTrackNumber) || hasTrackNumber(trackNumber)) {
@@ -228,7 +238,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                 }
                                 onTrackMetadataChange(updatedMetadata);
                             } else {
-                                handleFieldChange(trackPath, nextValue, mirrorTrackPath);
+                                handleFieldChange(trackPath, normalizedValue, mirrorTrackPath);
                             }
                         }}
                     />
