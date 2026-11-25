@@ -108,7 +108,7 @@ export function mapItunesMetadataToTrack(metadata) {
                 master_ownerships: [{
                     label: { label_name: getLabel(metadata) }
                 }],
-                album_ref: "",
+                album_ref: "Ei kataloginumeroa",
                 custom: {
                     CustomID: "",
                     finnish_content: false,

@@ -131,6 +131,7 @@ test('maps file metadata to the album and track fields required for sending', ()
     .toHaveValue('Songwriter');
   expect(screen.getByLabelText('Rooli')).toHaveValue('Tekijä');
   expect(screen.getByLabelText('Levy-yhtiö')).toHaveValue('Test Label');
+  expect(screen.getByLabelText('Kataloginumero')).toHaveValue('Ei kataloginumeroa');
   expect(screen.getByLabelText('Kartuntatunnus (albumi)')).toHaveValue('');
   expect(screen.getByLabelText('Kartuntatunnus (track)')).toHaveValue('');
   expect(screen.getByLabelText('Fennica')).not.toBeChecked();
@@ -162,7 +163,7 @@ test('maps file metadata to the album and track fields required for sending', ()
         master_ownerships: [{
           label: { label_name: 'Test Label' }
         }],
-        album_ref: '',
+        album_ref: 'Ei kataloginumeroa',
         custom: {
           CustomID: '',
           finnish_content: false,
