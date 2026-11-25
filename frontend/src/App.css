@@ -96,6 +96,16 @@ body {
   overflow-wrap: anywhere;
 }
 
+.json-line {
+  display: block;
+}
+
+.json-line-highlight {
+  color: var(--bs-success-text-emphasis);
+  background: var(--bs-success-bg-subtle);
+  font-weight: 700;
+}
+
 .metadata-editor {
   padding-right: 4px;
 }

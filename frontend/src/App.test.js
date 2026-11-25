@@ -462,6 +462,49 @@ test('shows editable, mapped and original metadata side by side and keeps origin
     .toHaveTextContent('"title": "Original title"');
 });
 
+test('highlights focused fields in edited and original metadata where their source is known', () => {
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: {
+      title: 'Source title',
+      composer: ['Writer One & Writer Two']
+    }
+  }));
+  const originalMetadata = {
+    common: {
+      title: 'Source title',
+      composer: ['Writer One & Writer Two']
+    }
+  };
+  const { container } = render(
+    <MetadataView
+      trackMetadata={trackMetadata}
+      originalMetadata={originalMetadata}
+      onTrackMetadataChange={jest.fn()}
+    />
+  );
+  const getHighlightedPaths = (headingId) => {
+    const section = document.getElementById(headingId).parentElement;
+    return Array.from(section.querySelectorAll('.json-line-highlight'))
+      .map((line) => JSON.parse(line.dataset.jsonPath));
+  };
+
+  fireEvent.focus(screen.getByLabelText('Kappaleen nimi'));
+  expect(getHighlightedPaths('edited-metadata-heading')).toContainEqual(['tracks', 0, 'title']);
+  expect(getHighlightedPaths('original-metadata-heading')).toContainEqual(['common', 'title']);
+
+  fireEvent.focus(document.getElementById('metadata-author-name-1'));
+  expect(getHighlightedPaths('edited-metadata-heading'))
+    .toContainEqual(['tracks', 0, 'artists_publishing_ownerships', 1, 'artist', 'full_name']);
+  expect(getHighlightedPaths('original-metadata-heading'))
+    .toContainEqual(['common', 'composer']);
+
+  fireEvent.focus(document.getElementById('metadata-author-role-1'));
+  expect(getHighlightedPaths('edited-metadata-heading'))
+    .toContainEqual(['tracks', 0, 'artists_publishing_ownerships', 1, 'rights_type', 'key']);
+  expect(getHighlightedPaths('original-metadata-heading')).toHaveLength(0);
+  expect(container.querySelectorAll('.json-line-highlight').length).toBeGreaterThan(0);
+});
+
 test('notifies when the audio file has no iTunes metadata markers', async () => {
   parseBlob
     .mockResolvedValueOnce({
