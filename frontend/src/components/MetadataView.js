@@ -81,6 +81,8 @@ const fields = [
     {
         label: "ISRC",
         path: ["isrc"],
+        validLengths: [0, 12],
+        validationMessage: "ISRC-kentän pituuden on oltava 0 tai 12 merkkiä.",
         sourcePath: (metadata) => hasSourceValue(metadata?.common?.isrc)
             ? ["common", "isrc"]
             : getNativeIsrcPath(metadata)
@@ -162,6 +164,8 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
         disabledWithTrackNumber,
         updateTrackCatalogNumber,
         emptyValueFallback,
+        validLengths,
+        validationMessage,
         columnClass: fieldColumnClass,
         sourcePath
     }) => {
@@ -173,6 +177,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
         const value = getValue(trackMetadata, trackPath);
         const trackNumber = getValue(trackMetadata, ["tracks", 0, "track_number"]);
         const isDisabled = disabled || (disabledWithTrackNumber && hasTrackNumber(trackNumber));
+        const isValidLength = !validLengths || validLengths.includes(String(value ?? "").length);
 
         return (
             <div
@@ -201,11 +206,14 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                 ) : (
                     <input
                         id={id}
-                        className="form-control"
+                        className={`form-control${isValidLength ? "" : " border-warning bg-warning-subtle"}`}
                         type={type || "text"}
                         value={value ?? ""}
                         disabled={isDisabled}
-                        title={isDisabled ? "Disabloitu" : undefined}
+                        aria-invalid={!isValidLength}
+                        title={isDisabled
+                            ? "Disabloitu"
+                            : (isValidLength ? undefined : "ISRC-koodin tulee olla 12 merkkiä pitkä tai tyhjä.")}
                         onFocus={() => handleFieldFocus(
                             [trackPath, mirrorTrackPath].filter(Boolean),
                             sourcePath
@@ -242,6 +250,11 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                             }
                         }}
                     />
+                )}
+                {!isValidLength && validationMessage && (
+                    <div className="form-text text-warning-emphasis" role="alert">
+                        {validationMessage}
+                    </div>
                 )}
             </div>
         );
@@ -309,7 +322,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                         return (
                                             <div className="col-12" key={index}>
                                                 <div className="row g-3">
-                                                    <div className="col-12 col-md-6">
+                                                    <div className="col-12 col-md-5">
                                                         <label className="form-label" htmlFor={nameId}>
                                                             Tekijä
                                                         </label>
@@ -327,7 +340,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                                             }
                                                         />
                                                     </div>
-                                                    <div className="col-12 col-md-6">
+                                                    <div className="col-12 col-md-5">
                                                         <label className="form-label" htmlFor={roleId}>
                                                             Rooli
                                                         </label>
@@ -344,6 +357,21 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                                                 <option key={value} value={value}>{label}</option>
                                                             ))}
                                                         </select>
+                                                    </div>
+                                                    <div className="col-12 col-md-2 d-flex align-items-end justify-content-end">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger"
+                                                            aria-label={`Poista tekijä ${index + 1}`}
+                                                            onClick={() => handleFieldChange(
+                                                                ["tracks", 0, "artists_publishing_ownerships"],
+                                                                getValue(trackMetadata, [
+                                                                    "tracks", 0, "artists_publishing_ownerships"
+                                                                ]).filter((_, authorIndex) => authorIndex !== index)
+                                                            )}
+                                                        >
+                                                            −
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>

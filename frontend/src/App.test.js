@@ -214,6 +214,69 @@ test('keeps the album title non-empty while editing', () => {
   expect(screen.getByLabelText('Albumin nimi')).toHaveValue(' ');
 });
 
+test('highlights ISRC values that are neither empty nor 12 characters long', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: { isrc: 'US1234567890' }
+  }));
+  const { rerender } = render(
+    <MetadataView
+      trackMetadata={trackMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  const isrc = screen.getByLabelText('ISRC');
+
+  expect(isrc).not.toHaveClass('bg-warning-subtle');
+  expect(isrc).toHaveAttribute('aria-invalid', 'false');
+
+  fireEvent.change(isrc, { target: { value: 'US123456789' } });
+  let updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  rerender(
+    <MetadataView
+      trackMetadata={updatedMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(screen.getByLabelText('ISRC')).toHaveClass('bg-warning-subtle');
+  expect(screen.getByLabelText('ISRC')).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'ISRC-kentän pituuden on oltava 0 tai 12 merkkiä.'
+  );
+
+  fireEvent.change(screen.getByLabelText('ISRC'), { target: { value: 'US12345678901' } });
+  updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  rerender(
+    <MetadataView
+      trackMetadata={updatedMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(screen.getByLabelText('ISRC')).toHaveClass('bg-warning-subtle');
+
+  fireEvent.change(screen.getByLabelText('ISRC'), { target: { value: '' } });
+  updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  rerender(
+    <MetadataView
+      trackMetadata={updatedMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(screen.getByLabelText('ISRC')).not.toHaveClass('bg-warning-subtle');
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('ISRC')).toHaveAttribute('aria-invalid', 'false');
+
+  fireEvent.change(screen.getByLabelText('ISRC'), { target: { value: 'US1234567890' } });
+  updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  rerender(
+    <MetadataView
+      trackMetadata={updatedMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(screen.getByLabelText('ISRC')).not.toHaveClass('bg-warning-subtle');
+});
+
 test('parses multiple composers and lets the user add and edit authors', () => {
   const onTrackMetadataChange = jest.fn();
   const trackMetadata = mapMetadataToTrack(addItunesMarker({
@@ -266,6 +329,36 @@ test('parses multiple composers and lets the user add and edit authors', () => {
     artist: { full_name: 'New Writer' },
     rights_type: { key: 'composer' }
   });
+});
+
+test('removes the selected author and role pair', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: { composer: ['First Writer', 'Second Writer', 'Third Writer'] }
+  }));
+  const { rerender } = render(
+    <MetadataView
+      trackMetadata={trackMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+
+  userEvent.click(screen.getByRole('button', { name: 'Poista tekijä 2' }));
+  const updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  expect(updatedMetadata.tracks[0].artists_publishing_ownerships.map(
+    ({ artist, rights_type }) => [artist.full_name, rights_type.key]
+  )).toEqual([
+    ['First Writer', 'author'],
+    ['Third Writer', 'author']
+  ]);
+  rerender(
+    <MetadataView
+      trackMetadata={updatedMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(screen.queryByDisplayValue('Second Writer')).not.toBeInTheDocument();
+  expect(screen.getByDisplayValue('Third Writer')).toBeInTheDocument();
 });
 
 test('stores author role codes while displaying Finnish labels', () => {
