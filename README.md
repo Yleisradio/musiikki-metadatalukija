@@ -12,7 +12,8 @@ Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetä�
 - **Yleistiedot:** Näyttää tiedostosta saadut (oleelliset) metatiedot jäsenneltynä.
 - **Metadatanäkymä:** Muuntaa tiedostometadatan track.json-rakenteeseen saatavilla olevien kappale-, albumi-, esittäjä- ja custom-tietojen osalta. Järjestelmäkohtaisia tunnisteita ja oikeustietoja ei päätellä puuttuvasta lähdedatasta.
 - **Muokkaus ja lähetys:** Track-metadataa voi muokata lomakkeella ja kopioida Tempo CMS:ään.
-- **Kaksi JSON-esitystapaa:** Metatietoja voi tarkastella tekstimuotoisena JSONina tai avattavana puurakenteena.
+- **JSON-esitystapa:** Metatietoja voi tarkastella tekstimuotoisena JSONina.
+- **Metadatan vertailu:** Muokkausvälilehdellä lomake, muokattu metadata ja alkuperäinen metadata näkyvät suurilla näytöillä rinnakkain. Molemmat metadatanäkymät voi piilottaa erikseen.
 - **Kappale- ja albumitietojen Apple Music -linkit:** Muodostaa linkit julkaisun Apple Music -sivulle, jos tiedostoon on tallennettu vastaavat Apple-tunnisteet.
 
 

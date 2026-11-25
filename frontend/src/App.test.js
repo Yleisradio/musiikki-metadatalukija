@@ -48,12 +48,12 @@ test('hides the album art frame until an image is available', () => {
   expect(screen.getByAltText('Albumin kansikuva')).toBeInTheDocument();
 });
 
-test('keeps React in control of the three metadata tabs', () => {
+test('keeps React in control of the two metadata tabs', () => {
   const onChange = jest.fn();
   const { rerender } = render(<MetadataTabs activeTab="main" onChange={onChange} />);
   const metadataTab = screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' });
-  const originalTab = screen.getByRole('tab', { name: 'Alkuperäinen metadata' });
-  expect(screen.getAllByRole('tab')).toHaveLength(3);
+  expect(screen.getAllByRole('tab')).toHaveLength(2);
+  expect(screen.queryByRole('tab', { name: 'Alkuperäinen metadata' })).not.toBeInTheDocument();
   expect(screen.getByRole('tab', { name: 'Perustiedot' })).toHaveClass('active');
 
   userEvent.click(metadataTab);
@@ -64,22 +64,15 @@ test('keeps React in control of the three metadata tabs', () => {
   expect(metadataTab).toHaveClass('active');
   expect(screen.getByRole('tab', { name: 'Perustiedot' })).not.toHaveClass('active');
 
-  userEvent.click(originalTab);
-  expect(onChange).toHaveBeenCalledWith('original');
-  rerender(<MetadataTabs activeTab="original" onChange={onChange} />);
-  expect(originalTab).toHaveAttribute('aria-selected', 'true');
-  expect(originalTab).toHaveClass('active');
+  userEvent.click(screen.getByRole('tab', { name: 'Perustiedot' }));
+  expect(onChange).toHaveBeenCalledWith('main');
 });
 
-test('switches between text and tree JSON inside a Bootstrap card', () => {
-  const { container } = render(<JsonMetadataPanel title="Metadata" data={{ title: 'Test' }} />);
-  expect(screen.getByRole('heading', { name: 'Metadata' }).closest('section')).toHaveClass('card');
+test('renders JSON as text without a card or view toggle', () => {
+  const { container } = render(<JsonMetadataPanel title="Metadata" data={{ title: 'Test' }} headingId="metadata-heading" />);
+  expect(screen.getByRole('region', { name: 'Metadata' })).not.toHaveClass('card', 'metadata-card');
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
-
-  userEvent.click(screen.getByRole('button', { name: 'JSON-näkymä' }));
-  expect(container.querySelector('pre')).not.toBeInTheDocument();
-  userEvent.click(screen.getByRole('button', { name: 'Tekstinäkymä' }));
-  expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
+  expect(screen.queryByRole('button', { name: /JSON-näkymä|Tekstinäkymä/ })).not.toBeInTheDocument();
 });
 
 test('renders summary metadata and album art in the main view', () => {
@@ -259,7 +252,7 @@ test('updates Fennica on both track and album when toggled', () => {
   expect(screen.getByLabelText('Fennica')).not.toBeChecked();
 });
 
-test('shows original metadata separately from its track.json mapping', async () => {
+test('shows editable, mapped and original metadata side by side and keeps original unchanged', async () => {
   parseBlob.mockResolvedValue({
     common: { title: 'Original title' },
     format: { duration: 12 },
@@ -274,19 +267,71 @@ test('shows original metadata separately from its track.json mapping', async () 
     screen.getByLabelText('Valitse audiotiedosto'),
     new File(['audio'], 'test.mp3', { type: 'audio/mpeg' })
   );
-  await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' })).toBeInTheDocument());
 
   userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
+  expect(screen.queryByRole('tab', { name: 'Alkuperäinen metadata' })).not.toBeInTheDocument();
+  const formColumn = screen.getByLabelText('Kappaleen nimi').closest('.col-xl-4');
+  const mappedColumn = screen.getByRole('heading', { name: 'Muokattu metadata' }).closest('.col-xl-4');
+  const originalColumn = screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('.col-xl-4');
+  expect(formColumn).toHaveClass('col-12');
+  expect(mappedColumn).toHaveClass('col-12');
+  expect(originalColumn).toHaveClass('col-12');
+  expect(new Set([formColumn, mappedColumn, originalColumn]).size).toBe(3);
+  expect(formColumn.parentElement).toBe(mappedColumn.parentElement);
+  expect(formColumn.parentElement).toBe(originalColumn.parentElement);
+  const mappedSection = mappedColumn.querySelector('section');
+  const originalSection = originalColumn.querySelector('section');
+  expect(mappedSection.className).toBe(originalSection.className);
+  expect(originalSection).not.toHaveClass('card', 'card-body', 'metadata-card');
+  expect(mappedSection.querySelector('h2').className).toBe(originalSection.querySelector('h2').className);
+  expect(mappedSection.querySelector('.json-content').className)
+    .toBe(originalSection.querySelector('.json-content').className);
+  expect(mappedSection.querySelector('pre').className).toBe(originalSection.querySelector('pre').className);
+
   fireEvent.change(screen.getByLabelText('Kappaleen nimi'), { target: { value: 'Edited title' } });
-  userEvent.click(screen.getByRole('tab', { name: 'Perustiedot' }));
-  userEvent.click(screen.getByRole('tab', { name: 'Alkuperäinen metadata' }));
+  expect(mappedColumn).toHaveTextContent('"title": "Edited title"');
+  expect(originalColumn).toHaveTextContent('"title": "Original title"');
+  expect(originalColumn).toHaveTextContent('"value": "Original native title"');
+  expect(originalColumn.querySelector('button')).not.toBeInTheDocument();
 
-  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
-    .toHaveTextContent('"title": "Original title"');
-  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
-    .toHaveTextContent('"value": "Original native title"');
+  const editedToggle = screen.getByRole('button', { name: 'Muokattu metadata' });
+  const originalToggle = screen.getByRole('button', { name: 'Alkuperäinen metadata' });
+  expect(editedToggle).toHaveAttribute('aria-pressed', 'true');
+  expect(originalToggle).toHaveAttribute('aria-pressed', 'true');
+  expect(editedToggle).toHaveClass('btn-primary');
+  expect(originalToggle).toHaveClass('btn-primary');
+  userEvent.click(editedToggle);
+  expect(editedToggle).toHaveAttribute('aria-pressed', 'false');
+  expect(editedToggle).toHaveClass('btn-outline-secondary');
+  expect(editedToggle).not.toHaveClass('btn-primary');
+  expect(screen.queryByRole('heading', { name: 'Muokattu metadata' })).not.toBeInTheDocument();
+  expect(formColumn).toHaveClass('col-xl-6');
+  expect(originalColumn).toHaveClass('col-xl-6');
+  fireEvent.change(screen.getByLabelText('Kappaleen nimi'), { target: { value: 'Changed while hidden' } });
+
+  userEvent.click(originalToggle);
+  expect(originalToggle).toHaveAttribute('aria-pressed', 'false');
+  expect(originalToggle).toHaveClass('btn-outline-secondary');
+  expect(screen.queryByRole('heading', { name: 'Alkuperäinen metadata' })).not.toBeInTheDocument();
+  expect(formColumn).toHaveClass('col-xl-12');
+
+  userEvent.click(editedToggle);
+  expect(editedToggle).toHaveClass('btn-primary');
+  expect(editedToggle).not.toHaveClass('btn-outline-secondary');
+  expect(formColumn).toHaveClass('col-xl-6');
+  expect(screen.getByRole('heading', { name: 'Muokattu metadata' }).closest('.col-xl-6'))
+    .toHaveTextContent('"title": "Changed while hidden"');
+
+  userEvent.click(screen.getByRole('tab', { name: 'Perustiedot' }));
   userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
-  expect(screen.getByLabelText('Kappaleen nimi')).toHaveValue('Edited title');
+  expect(screen.getByLabelText('Kappaleen nimi')).toHaveValue('Changed while hidden');
+  expect(screen.getByRole('button', { name: 'Alkuperäinen metadata' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.queryByRole('heading', { name: 'Alkuperäinen metadata' })).not.toBeInTheDocument();
+  userEvent.click(screen.getByRole('button', { name: 'Alkuperäinen metadata' }));
+  expect(formColumn).toHaveClass('col-xl-4');
+  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('.col-xl-4'))
+    .toHaveTextContent('"title": "Original title"');
 });
 
 test('notifies when the audio file has no iTunes metadata markers', async () => {
@@ -305,7 +350,7 @@ test('notifies when the audio file has no iTunes metadata markers', async () => 
     screen.getByLabelText('Valitse audiotiedosto'),
     new File(['audio'], 'previous.m4a', { type: 'audio/mp4' })
   );
-  await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' })).toBeInTheDocument());
   expect(screen.getAllByText('Previous track').length).toBeGreaterThan(0);
 
   userEvent.upload(
@@ -316,7 +361,7 @@ test('notifies when the audio file has no iTunes metadata markers', async () => 
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Tiedostosta ei löytynyt iTunes-lataukseen viittaavia metatietoja.'
   );
-  expect(screen.queryByRole('tab', { name: 'Alkuperäinen metadata' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('tab', { name: 'Metadatan muokkaus ja lähetys' })).not.toBeInTheDocument();
   expect(screen.queryByText('Previous track')).not.toBeInTheDocument();
   expect(screen.queryByText('Test')).not.toBeInTheDocument();
 });
@@ -333,7 +378,7 @@ test('does not notify when the audio file has iTunes metadata markers', async ()
     new File(['audio'], 'test.m4a', { type: 'audio/mp4' })
   );
 
-  await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' })).toBeInTheDocument());
   expect(screen.queryByText('Tiedostosta ei löytynyt iTunes-lataukseen viittaavia metatietoja.'))
     .not.toBeInTheDocument();
 });

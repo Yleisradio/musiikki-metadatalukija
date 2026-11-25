@@ -1,10 +1,8 @@
 import React, { useCallback, useState } from "react";
 import { parseBlob } from "music-metadata-browser";
 import { Buffer } from "buffer";
-import "react18-json-view/src/style.css";
 import "./App.css";
 import FileUpload from "./components/FileUpload";
-import JsonMetadataPanel from "./components/JsonMetadataPanel";
 import MainMetadataView from "./components/MainMetadataView";
 import MetadataView from "./components/MetadataView";
 import MetadataTabs from "./components/MetadataTabs";
@@ -240,23 +238,19 @@ function App() {
             {metadata && (
                 <>
                     <MetadataTabs activeTab={activeTab} onChange={setActiveTab} />
-                    {activeTab === "main" ? (
+                    {activeTab === "main" && (
                         <MainMetadataView
                             cleanData={cleanData}
                             albumArt={albumArt}
                         />
-                    ) : activeTab === "metadata" ? (
+                    )}
+                    <div hidden={activeTab !== "metadata"}>
                         <MetadataView
                             trackMetadata={trackMetadata}
+                            originalMetadata={originalMetadata}
                             onTrackMetadataChange={setTrackMetadata}
                         />
-                    ) : (
-                        <div className="row g-4 text-start align-items-start">
-                            <div className="col-12">
-                                <JsonMetadataPanel title="Alkuperäinen metadata" data={originalMetadata} />
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </>
             )}
         </main>

@@ -1,3 +1,6 @@
+import { useState } from "react";
+import JsonMetadataPanel from "./JsonMetadataPanel";
+
 function updateTrackValue(track, path, nextValue) {
     const [key, ...remainingPath] = path;
     const updated = Array.isArray(track) ? [...track] : { ...track };
@@ -59,7 +62,11 @@ function getValue(value, path) {
     return path.reduce((current, key) => current?.[key], value);
 }
 
-function MetadataView({ trackMetadata, onTrackMetadataChange }) {
+function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }) {
+    const [showEdited, setShowEdited] = useState(true);
+    const [showOriginal, setShowOriginal] = useState(true);
+    const columnClass = `col-12 col-xl-${12 / (1 + Number(showEdited) + Number(showOriginal))}`;
+
     const handleFieldChange = (path, value, mirrorPath) => {
         let updatedMetadata = updateTrackValue(trackMetadata, path, value);
         if (mirrorPath) updatedMetadata = updateTrackValue(updatedMetadata, mirrorPath, value);
@@ -67,8 +74,19 @@ function MetadataView({ trackMetadata, onTrackMetadataChange }) {
     };
 
     return (
+        <div>
+        <div className="d-flex flex-wrap gap-2 mb-3">
+            <button type="button" className={`btn ${showEdited ? "btn-primary" : "btn-outline-secondary"}`}
+                aria-pressed={showEdited} onClick={() => setShowEdited((visible) => !visible)}>
+                Muokattu metadata
+            </button>
+            <button type="button" className={`btn ${showOriginal ? "btn-primary" : "btn-outline-secondary"}`}
+                aria-pressed={showOriginal} onClick={() => setShowOriginal((visible) => !visible)}>
+                Alkuperäinen metadata
+            </button>
+        </div>
         <div className="row g-4 text-start align-items-start">
-            <div className="col-12 col-xl-6">
+            <div className={columnClass}>
                 <section className="card card-body shadow-sm metadata-card">
                     <h2 className="card-title h5">Metatiedot</h2>
                     <form className="row g-3" onSubmit={(event) => event.preventDefault()}>
@@ -124,11 +142,17 @@ function MetadataView({ trackMetadata, onTrackMetadataChange }) {
                     </form>
                 </section>
             </div>
-            <div className="col-12 col-xl-6">
-                <div className="json-content">
-                    <pre className="mb-0">{JSON.stringify(trackMetadata, null, 2)}</pre>
+            {showEdited && (
+                <div className={columnClass}>
+                    <JsonMetadataPanel title="Muokattu metadata" data={trackMetadata} headingId="edited-metadata-heading" />
                 </div>
-            </div>
+            )}
+            {showOriginal && (
+                <div className={columnClass}>
+                    <JsonMetadataPanel title="Alkuperäinen metadata" data={originalMetadata} headingId="original-metadata-heading" />
+                </div>
+            )}
+        </div>
         </div>
     );
 }

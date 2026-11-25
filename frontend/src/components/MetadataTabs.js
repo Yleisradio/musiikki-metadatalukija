@@ -19,15 +19,6 @@ function MetadataTabs({ activeTab, onChange }) {
             >
                 Metadatan muokkaus ja lähetys
             </button>
-            <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === "original"}
-                className={`nav-link${activeTab === "original" ? " active" : ""}`}
-                onClick={() => onChange("original")}
-            >
-                Alkuperäinen metadata
-            </button>
         </div>
     );
 }
