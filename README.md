@@ -21,6 +21,9 @@ Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetä�
 - `frontend/` sisältää React-käyttöliittymän.
 - `backend/` sisältää TypeScriptillä toteutetun Node.js-taustapalvelun.
 
+Backendissä `src/server.ts` alustaa ja käynnistää palvelimen, `src/routes.ts`
+määrittelee rajapinnat ja `src/errors.ts` käsittelee niiden virheet.
+
 Käyttöliittymä käyttää Bootstrap 5:n responsiivista ruudukkoa, kortteja,
 välilehtiä, painikkeita ja apuluokkia. Bootstrapin CSS tuodaan npm-paketista
 tiedostossa `frontend/src/index.js`; näkymien tila hallitaan Reactilla ilman

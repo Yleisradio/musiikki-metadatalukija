@@ -1,9 +1,11 @@
 const assert = require("node:assert/strict");
 const http = require("node:http");
 const { test } = require("node:test");
+const express = require("express");
 
 process.env.LOG_LEVEL = "silent";
 const { createApp } = require("../dist/server");
+const { errorHandler } = require("../dist/errors");
 
 async function listen(t, server) {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -69,27 +71,38 @@ test("preserves upstream errors and empty responses", async (t) => {
 test("validates requests and reports missing configuration", async (t) => {
   const url = await listen(t, http.createServer(createApp("")));
   assert.deepEqual(await (await fetch(`${url}/health`)).json(), { status: "ok" });
-  assert.equal((await fetch(`${url}/missing`)).status, 404);
-  assert.equal((await post(url, "{}", "text/plain")).status, 415);
-  assert.equal((await post(url, "{")).status, 400);
-  assert.equal((await post(url, "[]")).status, 400);
-  assert.equal((await post(url, "")).status, 400);
-  assert.equal((await post(url, JSON.stringify({ value: "a".repeat(1024 * 1024) }))).status, 413);
-  assert.equal((await post(url, "{}")).status, 503);
+  const cases = [
+    [() => fetch(`${url}/missing`), 404, "Not found"],
+    [() => post(url, "{}", "text/plain"), 415, "Content-Type must be application/json"],
+    [() => post(url, "{"), 400, "Invalid JSON"],
+    [() => post(url, "[]"), 400, "Request body must be a JSON object"],
+    [() => post(url, ""), 400, "Invalid JSON"],
+    [() => post(url, JSON.stringify({ value: "a".repeat(1024 * 1024) })), 413, "Request body is too large"],
+    [() => post(url, "{}"), 503, "Track API is not configured"],
+  ];
+  for (const [request, status, message] of cases) {
+    const response = await request();
+    assert.equal(response.status, status);
+    assert.deepEqual(await response.json(), { error: message });
+  }
   assert.throws(() => createApp("file:///tmp/track"), /TRACK_API_URL/);
   assert.throws(() => createApp("https://user:password@example.com/tracks"), /TRACK_API_URL/);
 });
 
 test("reports upstream connection failures and timeouts", async (t) => {
   const failedUrl = await listen(t, http.createServer(createApp("http://127.0.0.1:0/tracks")));
-  assert.equal((await post(failedUrl, "{}")).status, 502);
+  const failedResponse = await post(failedUrl, "{}");
+  assert.equal(failedResponse.status, 502);
+  assert.deepEqual(await failedResponse.json(), { error: "Track API request failed" });
 
   const upstream = http.createServer((_request, response) => {
     setTimeout(() => response.end("{}"), 150);
   });
   const upstreamUrl = await listen(t, upstream);
   const timeoutUrl = await listen(t, http.createServer(createApp(upstreamUrl, 25)));
-  assert.equal((await post(timeoutUrl, "{}")).status, 504);
+  const timeoutResponse = await post(timeoutUrl, "{}");
+  assert.equal(timeoutResponse.status, 504);
+  assert.deepEqual(await timeoutResponse.json(), { error: "Track API request timed out" });
 
   const slowBody = http.createServer((_request, response) => {
     response.writeHead(200, { "content-type": "application/json" });
@@ -99,4 +112,14 @@ test("reports upstream connection failures and timeouts", async (t) => {
   const slowBodyUrl = await listen(t, slowBody);
   const slowResponseUrl = await listen(t, http.createServer(createApp(slowBodyUrl, 25)));
   assert.equal((await post(slowResponseUrl, "{}")).status, 504);
+});
+
+test("handles unexpected errors without exposing details", async (t) => {
+  const app = express();
+  app.get("/failure", () => { throw new Error("private details"); });
+  app.use(errorHandler);
+  const url = await listen(t, http.createServer(app));
+  const response = await fetch(`${url}/failure`);
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: "Internal server error" });
 });
