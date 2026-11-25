@@ -111,7 +111,7 @@ function getValue(value, path) {
     return path.reduce((current, key) => current?.[key], value);
 }
 
-function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }) {
+function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, onSend, isSending }) {
     const [showForm, setShowForm] = useState(true);
     const [showEdited, setShowEdited] = useState(true);
     const [showOriginal, setShowOriginal] = useState(true);
@@ -193,18 +193,28 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }
 
     return (
         <div>
-        <div className="d-flex flex-wrap gap-2 mb-3">
-            <button type="button" className={`btn ${showForm ? "btn-primary" : "btn-outline-secondary"}`}
-                aria-pressed={showForm} onClick={() => setShowForm((visible) => !visible)}>
-                Metadatalomake
-            </button>
-            <button type="button" className={`btn ${showEdited ? "btn-primary" : "btn-outline-secondary"}`}
-                aria-pressed={showEdited} onClick={() => setShowEdited((visible) => !visible)}>
-                Muokattu metadata
-            </button>
-            <button type="button" className={`btn ${showOriginal ? "btn-primary" : "btn-outline-secondary"}`}
-                aria-pressed={showOriginal} onClick={() => setShowOriginal((visible) => !visible)}>
-                Alkuperäinen metadata
+        <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <div className="d-flex flex-wrap gap-2">
+                <button type="button" className={`btn ${showForm ? "btn-primary" : "btn-outline-secondary"}`}
+                    aria-pressed={showForm} onClick={() => setShowForm((visible) => !visible)}>
+                    Metadatalomake
+                </button>
+                <button type="button" className={`btn ${showEdited ? "btn-primary" : "btn-outline-secondary"}`}
+                    aria-pressed={showEdited} onClick={() => setShowEdited((visible) => !visible)}>
+                    Muokattu metadata
+                </button>
+                <button type="button" className={`btn ${showOriginal ? "btn-primary" : "btn-outline-secondary"}`}
+                    aria-pressed={showOriginal} onClick={() => setShowOriginal((visible) => !visible)}>
+                    Alkuperäinen metadata
+                </button>
+            </div>
+            <button
+                type="button"
+                className="btn btn-success ms-auto"
+                onClick={onSend}
+                disabled={!onSend || isSending}
+            >
+                {isSending ? "Lähetetään..." : "Lähetä"}
             </button>
         </div>
         <div className="row g-4 text-start align-items-start">

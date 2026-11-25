@@ -68,7 +68,7 @@ test("preserves upstream errors and empty responses", async (t) => {
   assert.equal(await emptyResponse.text(), "");
 });
 
-test("validates requests and reports missing configuration", async (t) => {
+test("validates requests when no upstream is configured", async (t) => {
   const url = await listen(t, http.createServer(createApp("")));
   assert.deepEqual(await (await fetch(`${url}/health`)).json(), { status: "ok" });
   const cases = [
@@ -78,7 +78,6 @@ test("validates requests and reports missing configuration", async (t) => {
     [() => post(url, "[]"), 400, "Request body must be a JSON object"],
     [() => post(url, ""), 400, "Invalid JSON"],
     [() => post(url, JSON.stringify({ value: "a".repeat(1024 * 1024) })), 413, "Request body is too large"],
-    [() => post(url, "{}"), 503, "Track API is not configured"],
   ];
   for (const [request, status, message] of cases) {
     const response = await request();
@@ -87,6 +86,15 @@ test("validates requests and reports missing configuration", async (t) => {
   }
   assert.throws(() => createApp("file:///tmp/track"), /TRACK_API_URL/);
   assert.throws(() => createApp("https://user:password@example.com/tracks"), /TRACK_API_URL/);
+});
+
+test("accepts track metadata for logging when no upstream is configured", async (t) => {
+  const url = await listen(t, http.createServer(createApp("")));
+  const metadata = { tracks: [{ title: "Test" }] };
+
+  const response = await post(url, JSON.stringify(metadata));
+  assert.equal(response.status, 202);
+  assert.deepEqual(await response.json(), { status: "accepted", forwarded: false });
 });
 
 test("reports upstream connection failures and timeouts", async (t) => {

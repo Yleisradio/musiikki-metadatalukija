@@ -12,6 +12,11 @@ import { mapMetadataToTrack } from './utils/trackMetadata';
 
 jest.mock('music-metadata-browser', () => ({ parseBlob: jest.fn() }));
 
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+});
+
 function renderApp() {
   return render(
     <NotificationProvider>
@@ -553,6 +558,73 @@ test('does not notify when the audio file has iTunes metadata markers', async ()
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' })).toBeInTheDocument());
   expect(screen.queryByText('Tiedostosta ei löytynyt iTunes-lataukseen viittaavia metatietoja.'))
     .not.toBeInTheDocument();
+});
+
+test('sends the edited metadata to the backend and reports success', async () => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 201 });
+  parseBlob.mockResolvedValue({
+    common: { title: 'Original title' },
+    native: { mp4: [{ id: 'cnID', value: 12345 }] }
+  });
+  renderApp();
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'test.m4a', { type: 'audio/mp4' })
+  );
+  await screen.findByRole('tab', { name: 'Metadatan muokkaus ja lähetys' });
+  userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
+  fireEvent.change(screen.getByLabelText('Kappaleen nimi'), { target: { value: 'Edited title' } });
+  userEvent.click(screen.getByRole('button', { name: 'Lähetä' }));
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/tracks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: expect.stringContaining('"title":"Edited title"')
+  }));
+  expect(await screen.findByRole('status')).toHaveTextContent('Metadata lähetetty onnistuneesti.');
+});
+
+test('clarifies that metadata is only logged when no upstream is configured', async () => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 202 });
+  parseBlob.mockResolvedValue({
+    common: { title: 'Test' },
+    native: { mp4: [{ id: 'cnID', value: 12345 }] }
+  });
+  renderApp();
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'test.m4a', { type: 'audio/mp4' })
+  );
+  await screen.findByRole('tab', { name: 'Metadatan muokkaus ja lähetys' });
+  userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
+  userEvent.click(screen.getByRole('button', { name: 'Lähetä' }));
+
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    'Metadata vastaanotettiin ja kirjattiin backendin lokiin, mutta sitä ei tallenneta pysyvästi.'
+  );
+});
+
+test('reports backend errors when sending metadata fails', async () => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 502 });
+  parseBlob.mockResolvedValue({
+    common: { title: 'Test' },
+    native: { mp4: [{ id: 'cnID', value: 12345 }] }
+  });
+  renderApp();
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'test.m4a', { type: 'audio/mp4' })
+  );
+  await screen.findByRole('tab', { name: 'Metadatan muokkaus ja lähetys' });
+  userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
+  userEvent.click(screen.getByRole('button', { name: 'Lähetä' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Metadatan lähetys epäonnistui (HTTP 502).'
+  );
 });
 
 test('notifies the user when metadata cannot be read', async () => {

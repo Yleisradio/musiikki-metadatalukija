@@ -31,8 +31,12 @@ export function createRoutes(trackApiUrl: string | undefined, timeoutMs: number)
     if (!request.body || typeof request.body !== "object" || Array.isArray(request.body)) {
       throw new HttpError(400, "Request body must be a JSON object");
     }
+    const trackCount = Array.isArray(request.body.tracks) ? request.body.tracks.length : undefined;
+    logger.info({ metadata: request.body, trackCount }, "Track metadata received");
+
     if (!upstreamUrl) {
-      throw new HttpError(503, "Track API is not configured", "Track API is not configured");
+      response.status(202).json({ status: "accepted", forwarded: false });
+      return;
     }
 
     const signal = AbortSignal.timeout(timeoutMs);

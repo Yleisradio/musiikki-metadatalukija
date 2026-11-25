@@ -54,7 +54,8 @@ muodostama `{ "tracks": [...] }` -rakenne sopii pyyntöön. Backend ei tallenna
 trackia itse eikä tarkista sen sisältöä ulkoisen rajapinnan skeemaa vasten.
 
 Aseta ympäristömuuttujaan `TRACK_API_URL` ulkoisen POST-rajapinnan koko
-HTTP(S)-osoite ennen käynnistystä, esimerkiksi:
+HTTP(S)-osoite ennen käynnistystä, jos metadata halutaan välittää eteenpäin,
+esimerkiksi:
 
 ```bash
 TRACK_API_URL=https://example.com/tracks docker compose up --build
@@ -68,7 +69,9 @@ curl -X POST http://localhost:3000/api/tracks \
   -d '{"tracks":[{"title":"Esimerkki"}]}'
 ```
 
-Ilman osoitetta rajapinta palauttaa 503. Ulkoisen rajapinnan vastauskoodi,
+Ilman osoitetta backend ottaa metadatan vastaan, kirjaa sen lokiin ja palauttaa
+HTTP 202 -vastauksen. Metadataa ei tällöin tallenneta pysyvästi eikä välitetä
+eteenpäin. Kun `TRACK_API_URL` on asetettu, ulkoisen rajapinnan vastauskoodi,
 vastaussisältö ja mahdolliset `Content-Type`- ja `Location`-otsakkeet
 välitetään kutsujalle. Yhteysvirhe palauttaa 502 ja 10 sekunnin aikakatkaisu
 504. Pyyntökoon yläraja on 1 MiB. Ulkoisen palvelun autentikointia ei ole
