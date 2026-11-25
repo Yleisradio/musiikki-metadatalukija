@@ -131,7 +131,7 @@ test('maps file metadata to the album and track fields required for sending', ()
   expect(screen.getByLabelText('Kartuntatunnus (track)')).toHaveValue('');
   expect(screen.getByLabelText('Fennica')).not.toBeChecked();
   expect(screen.getByLabelText('Yle Master')).not.toBeChecked();
-  expect(screen.getByLabelText('Fennica')).toBeDisabled();
+  expect(screen.getByLabelText('Fennica')).toBeEnabled();
   expect(screen.getByLabelText('Yle Master')).toBeDisabled();
   expect(trackMetadata).toEqual({
     tracks: [{
@@ -214,7 +214,7 @@ test('updates the artist name on both track and album', () => {
     .toBe('Updated artist');
 });
 
-test('renders Fennica and Yle Master disabled at the end of the form on the same row', () => {
+test('renders Fennica enabled and Yle Master disabled at the end of the form on the same row', () => {
   const trackMetadata = mapMetadataToTrack({ common: {} });
   render(
     <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={jest.fn()} />
@@ -223,7 +223,7 @@ test('renders Fennica and Yle Master disabled at the end of the form on the same
   const fennica = screen.getByLabelText('Fennica');
   const yleMaster = screen.getByLabelText('Yle Master');
   const catalogNumber = screen.getByLabelText('Kataloginumero');
-  expect(fennica).toBeDisabled();
+  expect(fennica).toBeEnabled();
   expect(yleMaster).toBeDisabled();
   expect(catalogNumber.closest('.col-12')).not.toHaveClass('col-md-6');
   expect(fennica.closest('.col-6')).toBeInTheDocument();
@@ -233,6 +233,30 @@ test('renders Fennica and Yle Master disabled at the end of the form on the same
   expect(trackMetadata.tracks[0].album.custom.finnish_content).toBe(false);
   expect(trackMetadata.tracks[0].custom.yle_master).toBe(false);
   expect(trackMetadata.tracks[0].album.custom.yle_master).toBe(false);
+});
+
+test('updates Fennica on both track and album when toggled', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack({ common: {} });
+  const { rerender, container } = render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+
+  userEvent.click(screen.getByLabelText('Fennica'));
+  let updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  expect(updatedMetadata.tracks[0].custom.finnish_content).toBe(true);
+  expect(updatedMetadata.tracks[0].album.custom.finnish_content).toBe(true);
+  expect(trackMetadata.tracks[0].custom.finnish_content).toBe(false);
+  rerender(<MetadataView trackMetadata={updatedMetadata} onTrackMetadataChange={onTrackMetadataChange} />);
+  expect(screen.getByLabelText('Fennica')).toBeChecked();
+  expect(container.querySelector('pre')).toHaveTextContent('"finnish_content": true');
+
+  userEvent.click(screen.getByLabelText('Fennica'));
+  updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  expect(updatedMetadata.tracks[0].custom.finnish_content).toBe(false);
+  expect(updatedMetadata.tracks[0].album.custom.finnish_content).toBe(false);
+  rerender(<MetadataView trackMetadata={updatedMetadata} onTrackMetadataChange={onTrackMetadataChange} />);
+  expect(screen.getByLabelText('Fennica')).not.toBeChecked();
 });
 
 test('shows original metadata separately from its track.json mapping', async () => {

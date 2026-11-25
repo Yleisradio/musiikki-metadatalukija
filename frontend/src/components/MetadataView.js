@@ -43,7 +43,6 @@ const fields = [
         path: ["custom", "finnish_content"],
         mirrorPath: ["album", "custom", "finnish_content"],
         type: "checkbox",
-        disabled: true,
         columnClass: "col-6"
     },
     {
