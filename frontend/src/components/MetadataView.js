@@ -63,9 +63,11 @@ function getValue(value, path) {
 }
 
 function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }) {
+    const [showForm, setShowForm] = useState(true);
     const [showEdited, setShowEdited] = useState(true);
     const [showOriginal, setShowOriginal] = useState(true);
-    const columnClass = `col-12 col-xl-${12 / (1 + Number(showEdited) + Number(showOriginal))}`;
+    const visiblePanels = Number(showForm) + Number(showEdited) + Number(showOriginal);
+    const columnClass = `col-12 col-xl-${12 / Math.max(visiblePanels, 1)}`;
 
     const handleFieldChange = (path, value, mirrorPath) => {
         let updatedMetadata = updateTrackValue(trackMetadata, path, value);
@@ -76,6 +78,10 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }
     return (
         <div>
         <div className="d-flex flex-wrap gap-2 mb-3">
+            <button type="button" className={`btn ${showForm ? "btn-primary" : "btn-outline-secondary"}`}
+                aria-pressed={showForm} onClick={() => setShowForm((visible) => !visible)}>
+                Metadatalomake
+            </button>
             <button type="button" className={`btn ${showEdited ? "btn-primary" : "btn-outline-secondary"}`}
                 aria-pressed={showEdited} onClick={() => setShowEdited((visible) => !visible)}>
                 Muokattu metadata
@@ -86,9 +92,10 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }
             </button>
         </div>
         <div className="row g-4 text-start align-items-start">
+            {showForm && (
             <div className={columnClass}>
+                <h2 className="h5 mb-3">Metadatalomake</h2>
                 <section className="card card-body shadow-sm metadata-card">
-                    <h2 className="card-title h5">Metatiedot</h2>
                     <form className="row g-3" onSubmit={(event) => event.preventDefault()}>
                         {fields.map(({ label, path, mirrorPath, type, disabled, columnClass }) => {
                             const trackPath = ["tracks", 0, ...path];
@@ -142,6 +149,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }
                     </form>
                 </section>
             </div>
+            )}
             {showEdited && (
                 <div className={columnClass}>
                     <JsonMetadataPanel title="Muokattu metadata" data={trackMetadata} headingId="edited-metadata-heading" />

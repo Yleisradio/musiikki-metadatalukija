@@ -22,7 +22,7 @@ function renderApp() {
 
 test('renders the metadata reader and audio upload instructions', () => {
   renderApp();
-  expect(screen.getByRole('heading', { name: /metatietolukija/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /metadatalukija/i })).toBeInTheDocument();
   expect(screen.getByText(/pudota audiotiedosto tai klikkaa tästä/i)).toBeInTheDocument();
 });
 
@@ -250,6 +250,34 @@ test('updates Fennica on both track and album when toggled', () => {
   expect(updatedMetadata.tracks[0].album.custom.finnish_content).toBe(false);
   rerender(<MetadataView trackMetadata={updatedMetadata} onTrackMetadataChange={onTrackMetadataChange} />);
   expect(screen.getByLabelText('Fennica')).not.toBeChecked();
+});
+
+test('toggles the metadata form independently of the metadata panels', () => {
+  render(
+    <MetadataView
+      trackMetadata={mapMetadataToTrack({ common: {} })}
+      originalMetadata={{}}
+      onTrackMetadataChange={jest.fn()}
+    />
+  );
+  const formToggle = screen.getByRole('button', { name: 'Metadatalomake' });
+
+  expect(formToggle).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('heading', { name: 'Metadatalomake' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Kappaleen nimi')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Metatiedot' })).not.toBeInTheDocument();
+
+  userEvent.click(formToggle);
+  expect(formToggle).toHaveAttribute('aria-pressed', 'false');
+  expect(formToggle).toHaveClass('btn-outline-secondary');
+  expect(screen.queryByRole('heading', { name: 'Metadatalomake' })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Kappaleen nimi')).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Muokattu metadata' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' })).toBeInTheDocument();
+
+  userEvent.click(formToggle);
+  expect(formToggle).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('Kappaleen nimi')).toBeInTheDocument();
 });
 
 test('uses full-width fields at the one-third desktop layout and restores the wider layout when toggled', () => {

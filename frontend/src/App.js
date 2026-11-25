@@ -229,7 +229,7 @@ function App() {
 
     return (
         <main className="container-fluid app-shell">
-            <h1>Musiikin metatietolukija</h1>
+            <h1>Musiikin metadatalukija</h1>
             <FileUpload
                 fileName={fileName}
                 onFileSelected={handleFileUpload}
