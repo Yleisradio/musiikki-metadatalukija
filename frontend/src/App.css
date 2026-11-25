@@ -77,6 +77,10 @@ body {
   font-size: 1.1rem;
 }
 
+.metadata-card input:disabled {
+  cursor: not-allowed !important;
+}
+
 .json-content {
   min-width: 0;
   max-height: min(68vh, 760px);

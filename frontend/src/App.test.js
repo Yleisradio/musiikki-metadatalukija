@@ -98,55 +98,92 @@ test('renders summary metadata and album art in the main view', () => {
   expect(screen.getByText('Writer')).toBeInTheDocument();
 });
 
-test('maps file metadata to the track.json shape', () => {
+test('maps file metadata to the album and track fields required for sending', () => {
   const metadata = {
-    format: { duration: 192.4 },
     common: {
       title: 'Test',
       artists: ['Artist One', 'Artist Two'],
       album: 'Album',
       isrc: 'US1234567890',
-      date: '2024-06-01',
       track: { no: 3 },
       composer: ['Songwriter'],
-      genre: ['Rock'],
-      language: 'eng',
-      year: 2024
+      label: 'Test Label'
     }
   };
+  const trackMetadata = mapMetadataToTrack(metadata);
   const { container } = render(
     <MetadataView
-      trackMetadata={mapMetadataToTrack(metadata)}
+      trackMetadata={trackMetadata}
       onTrackMetadataChange={jest.fn()}
     />
   );
 
   expect(container.querySelector('section')).toHaveClass('card');
-  expect(screen.getByLabelText('title')).toHaveValue('Test');
-  expect(screen.getByLabelText('duration')).toHaveValue(192.4);
-  expect(screen.getByLabelText('display_artists / 0')).toHaveValue('Artist One');
-  expect(screen.getByLabelText('album / title')).toHaveValue('Album');
-  expect(screen.getByLabelText('track_number')).toHaveValue(3);
-  expect(screen.getByLabelText('artists_publishing_ownerships / 0 / artist / full_name'))
+  expect(screen.getByLabelText('Kappaleen nimi')).toHaveValue('Test');
+  expect(screen.getByLabelText('Uranumero')).toHaveValue(3);
+  expect(screen.getByLabelText('Esittäjän nimi')).toHaveValue('Artist One, Artist Two');
+  expect(screen.getByLabelText('Albumin nimi')).toHaveValue(' ');
+  expect(screen.getByLabelText('Tekijän nimi'))
     .toHaveValue('Songwriter');
-  expect(screen.getByLabelText('custom / publication_year')).toHaveValue('2024');
-  expect(container.querySelectorAll('details')).toHaveLength(0);
+  expect(screen.getByLabelText('Tekijän rooli')).toHaveValue('tekijä');
+  expect(screen.getByLabelText('Levy-yhtiö')).toHaveValue('Test Label');
+  expect(screen.getByLabelText('Kartuntatunnus (albumi)')).toHaveValue('');
+  expect(screen.getByLabelText('Kartuntatunnus (track)')).toHaveValue('');
+  expect(screen.getByLabelText('Fennica')).not.toBeChecked();
+  expect(screen.getByLabelText('Yle Master')).not.toBeChecked();
+  expect(screen.getByLabelText('Fennica')).toBeDisabled();
+  expect(screen.getByLabelText('Yle Master')).toBeDisabled();
+  expect(trackMetadata).toEqual({
+    tracks: [{
+      title: 'Test',
+      isrc: 'US1234567890',
+      track_number: 3,
+      artists_master_ownerships: [{
+        artist: { full_name: 'Artist One, Artist Two' }
+      }],
+      artists_publishing_ownerships: [{
+        artist: { full_name: 'Songwriter' },
+        rights_type: { key: 'tekijä' }
+      }],
+      custom: {
+        CustomID: '',
+        finnish_content: false,
+        yle_master: false
+      },
+      album: {
+        title: ' ',
+        artists_master_ownerships: [{
+          artist: { full_name: 'Artist One, Artist Two' }
+        }],
+        master_ownerships: [{
+          label: { label_name: 'Test Label' }
+        }],
+        album_ref: 'Ei kataloginumeroa',
+        custom: {
+          CustomID: '',
+          finnish_content: false,
+          yle_master: false
+        }
+      }
+    }]
+  });
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
-  expect(screen.queryByRole('heading', { name: /track\.json/i })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'JSON-näkymä' })).not.toBeInTheDocument();
 });
 
 test('edits mapped track fields through the form', () => {
   const onTrackMetadataChange = jest.fn();
-  const trackMetadata = { title: 'Original', custom: { genre: ['Rock'] } };
+  const trackMetadata = mapMetadataToTrack({ common: { title: 'Original' } });
   const { rerender, container } = render(
     <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
   );
 
-  fireEvent.change(screen.getByLabelText('title'), { target: { value: 'Edited' } });
+  fireEvent.change(screen.getByLabelText('Kappaleen nimi'), { target: { value: 'Edited' } });
   expect(onTrackMetadataChange).toHaveBeenLastCalledWith({
-    title: 'Edited',
-    custom: { genre: ['Rock'] }
+    ...trackMetadata,
+    tracks: [{
+      ...trackMetadata.tracks[0],
+      title: 'Edited'
+    }]
   });
   rerender(
     <MetadataView
@@ -155,6 +192,47 @@ test('edits mapped track fields through the form', () => {
     />
   );
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Edited"');
+  fireEvent.change(screen.getByLabelText('Kartuntatunnus (track)'), { target: { value: 'DIGI-1234-02' } });
+  expect(onTrackMetadataChange.mock.lastCall[0].tracks[0].custom.CustomID).toBe('DIGI-1234-02');
+});
+
+test('updates the artist name on both track and album', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack({ common: { artists: ['Original artist'] } });
+  render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+
+  fireEvent.change(screen.getByLabelText('Esittäjän nimi'), {
+    target: { value: 'Updated artist' }
+  });
+
+  const updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  expect(updatedMetadata.tracks[0].artists_master_ownerships[0].artist.full_name)
+    .toBe('Updated artist');
+  expect(updatedMetadata.tracks[0].album.artists_master_ownerships[0].artist.full_name)
+    .toBe('Updated artist');
+});
+
+test('renders Fennica and Yle Master disabled at the end of the form on the same row', () => {
+  const trackMetadata = mapMetadataToTrack({ common: {} });
+  render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={jest.fn()} />
+  );
+
+  const fennica = screen.getByLabelText('Fennica');
+  const yleMaster = screen.getByLabelText('Yle Master');
+  const catalogNumber = screen.getByLabelText('Kataloginumero');
+  expect(fennica).toBeDisabled();
+  expect(yleMaster).toBeDisabled();
+  expect(catalogNumber.closest('.col-12')).not.toHaveClass('col-md-6');
+  expect(fennica.closest('.col-6')).toBeInTheDocument();
+  expect(yleMaster.closest('.col-6')).toBeInTheDocument();
+  expect(fennica.closest('form')).toBe(yleMaster.closest('form'));
+  expect(trackMetadata.tracks[0].custom.finnish_content).toBe(false);
+  expect(trackMetadata.tracks[0].album.custom.finnish_content).toBe(false);
+  expect(trackMetadata.tracks[0].custom.yle_master).toBe(false);
+  expect(trackMetadata.tracks[0].album.custom.yle_master).toBe(false);
 });
 
 test('shows original metadata separately from its track.json mapping', async () => {
@@ -175,7 +253,7 @@ test('shows original metadata separately from its track.json mapping', async () 
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Alkuperäinen metadata' })).toBeInTheDocument());
 
   userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
-  fireEvent.change(screen.getByLabelText('title'), { target: { value: 'Edited title' } });
+  fireEvent.change(screen.getByLabelText('Kappaleen nimi'), { target: { value: 'Edited title' } });
   userEvent.click(screen.getByRole('tab', { name: 'Perustiedot' }));
   userEvent.click(screen.getByRole('tab', { name: 'Alkuperäinen metadata' }));
 
@@ -184,7 +262,7 @@ test('shows original metadata separately from its track.json mapping', async () 
   expect(screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('section'))
     .toHaveTextContent('"value": "Original native title"');
   userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
-  expect(screen.getByLabelText('title')).toHaveValue('Edited title');
+  expect(screen.getByLabelText('Kappaleen nimi')).toHaveValue('Edited title');
 });
 
 test('notifies when the audio file has no iTunes metadata markers', async () => {
