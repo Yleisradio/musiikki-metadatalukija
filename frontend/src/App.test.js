@@ -252,6 +252,35 @@ test('updates Fennica on both track and album when toggled', () => {
   expect(screen.getByLabelText('Fennica')).not.toBeChecked();
 });
 
+test('uses full-width fields at the one-third desktop layout and restores the wider layout when toggled', () => {
+  const trackMetadata = mapMetadataToTrack({ common: {} });
+  render(<MetadataView trackMetadata={trackMetadata} originalMetadata={{}} onTrackMetadataChange={jest.fn()} />);
+  const fields = screen.getByLabelText('Kappaleen nimi').closest('form').querySelectorAll('input:not([type="checkbox"])');
+  const editedToggle = screen.getByRole('button', { name: 'Muokattu metadata' });
+  const originalToggle = screen.getByRole('button', { name: 'Alkuperäinen metadata' });
+  const checkboxes = [screen.getByLabelText('Fennica'), screen.getByLabelText('Yle Master')];
+  const fieldContainer = (field) => field.parentElement;
+
+  for (const field of fields) {
+    expect(fieldContainer(field)).toHaveClass('col-12');
+    expect(fieldContainer(field).classList.contains('col-xl-12') ||
+      !fieldContainer(field).classList.contains('col-md-6')).toBe(true);
+  }
+  for (const checkbox of checkboxes) {
+    expect(checkbox.closest('.col-6')).toBeInTheDocument();
+  }
+
+  userEvent.click(editedToggle);
+  expect(fieldContainer(screen.getByLabelText('Kappaleen nimi'))).toHaveClass('col-md-6');
+  expect(fieldContainer(screen.getByLabelText('Kappaleen nimi'))).not.toHaveClass('col-xl-12');
+  userEvent.click(originalToggle);
+  expect(fieldContainer(screen.getByLabelText('Kappaleen nimi'))).not.toHaveClass('col-xl-12');
+  userEvent.click(editedToggle);
+  expect(fieldContainer(screen.getByLabelText('Kappaleen nimi'))).not.toHaveClass('col-xl-12');
+  userEvent.click(originalToggle);
+  expect(fieldContainer(screen.getByLabelText('Kappaleen nimi'))).toHaveClass('col-xl-12');
+});
+
 test('shows editable, mapped and original metadata side by side and keeps original unchanged', async () => {
   parseBlob.mockResolvedValue({
     common: { title: 'Original title' },

@@ -100,7 +100,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange }
 
                             return (
                                 <div
-                                    className={columnClass || "col-12 col-md-6"}
+                                    className={columnClass || `col-12 col-md-6${showEdited && showOriginal ? " col-xl-12" : ""}`}
                                     key={label}
                                 >
                                     <label className="form-label" htmlFor={id}>{label}</label>
