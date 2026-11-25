@@ -400,7 +400,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
             </div>
             )}
             {showEdited && (
-                <div className={columnClass}>
+                <div className={`${columnClass} metadata-panel-sticky`}>
                     <JsonMetadataPanel
                         title="Muokattu metadata"
                         data={trackMetadata}
@@ -410,7 +410,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                 </div>
             )}
             {showOriginal && (
-                <div className={columnClass}>
+                <div className={`${columnClass} metadata-panel-sticky`}>
                     <JsonMetadataPanel
                         title="Alkuperäinen metadata"
                         data={originalMetadata}

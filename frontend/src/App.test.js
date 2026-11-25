@@ -702,6 +702,8 @@ test('shows editable, mapped and original metadata side by side and keeps origin
   const mappedColumn = screen.getByRole('heading', { name: 'Muokattu metadata' }).closest('.col-xl-4');
   const originalColumn = screen.getByRole('heading', { name: 'Alkuperäinen metadata' }).closest('.col-xl-4');
   expect(formColumn).toHaveClass('col-12');
+  expect(mappedColumn).toHaveClass('metadata-panel-sticky');
+  expect(originalColumn).toHaveClass('metadata-panel-sticky');
   expect(mappedColumn).toHaveClass('col-12');
   expect(originalColumn).toHaveClass('col-12');
   expect(new Set([formColumn, mappedColumn, originalColumn]).size).toBe(3);

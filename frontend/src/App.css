@@ -98,6 +98,14 @@ body {
   border-radius: var(--bs-border-radius);
 }
 
+@media (min-width: 1200px) {
+  .metadata-panel-sticky {
+    position: sticky;
+    top: 1rem;
+    align-self: flex-start;
+  }
+}
+
 .json-content pre {
   padding: 14px;
   background: var(--bs-secondary-bg);
