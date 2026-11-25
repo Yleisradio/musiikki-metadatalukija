@@ -81,7 +81,7 @@ export function mapMetadataToTrack(metadata) {
             }],
             artists_publishing_ownerships: [{
                 artist: { full_name: songwriterName },
-                rights_type: { key: "tekijä" }
+                rights_type: { key: "" }
             }],
             custom: {
                 CustomID: "",
@@ -96,7 +96,7 @@ export function mapMetadataToTrack(metadata) {
                 master_ownerships: [{
                     label: { label_name: getLabel(metadata) }
                 }],
-                album_ref: "Ei kataloginumeroa",
+                album_ref: "",
                 custom: {
                     CustomID: "",
                     finnish_content: false,

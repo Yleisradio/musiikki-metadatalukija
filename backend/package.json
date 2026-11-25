@@ -4,9 +4,15 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "npm run build && node --test test/*.test.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pino": "^9.6.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^22.15.30",
     "typescript": "^5.8.3"
   }

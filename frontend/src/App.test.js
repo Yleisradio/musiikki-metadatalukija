@@ -158,7 +158,7 @@ test('maps file metadata to the album and track fields required for sending', ()
         master_ownerships: [{
           label: { label_name: 'Test Label' }
         }],
-        album_ref: 'Ei kataloginumeroa',
+        album_ref: '',
         custom: {
           CustomID: '',
           finnish_content: false,

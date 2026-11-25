@@ -40,3 +40,35 @@ frontendin `/api/`-pyynnöt välitetään backendille.
 
 Backendin TypeScript-koodin voi kääntää hakemistossa `backend/` komennolla
 `npm run build`.
+
+## Track-rajapinta
+
+Backend tarjoaa rajapinnan `POST /tracks`, joka näkyy Docker Composessa
+käyttöliittymälle osoitteessa `/api/tracks`. Se välittää JSON-objektin
+sellaisenaan ulkoiseen rajapintaan HTTP POST -pyyntönä. Esimerkiksi frontendin
+muodostama `{ "tracks": [...] }` -rakenne sopii pyyntöön. Backend ei tallenna
+trackia itse eikä tarkista sen sisältöä ulkoisen rajapinnan skeemaa vasten.
+
+Aseta ympäristömuuttujaan `TRACK_API_URL` ulkoisen POST-rajapinnan koko
+HTTP(S)-osoite ennen käynnistystä, esimerkiksi:
+
+```bash
+TRACK_API_URL=https://example.com/tracks docker compose up --build
+```
+
+Rajapintaa voi kutsua esimerkiksi näin:
+
+```bash
+curl -X POST http://localhost:3000/api/tracks \
+  -H 'Content-Type: application/json' \
+  -d '{"tracks":[{"title":"Esimerkki"}]}'
+```
+
+Ilman osoitetta rajapinta palauttaa 503. Ulkoisen rajapinnan vastauskoodi,
+vastaussisältö ja mahdolliset `Content-Type`- ja `Location`-otsakkeet
+välitetään kutsujalle. Yhteysvirhe palauttaa 502 ja 10 sekunnin aikakatkaisu
+504. Pyyntökoon yläraja on 1 MiB. Ulkoisen palvelun autentikointia ei ole
+vielä toteutettu. Lokituksen tasoa voi säätää ympäristömuuttujalla `LOG_LEVEL`
+(oletus `info`).
+
+Backendin testit voi suorittaa hakemistossa `backend/` komennolla `npm test`.
