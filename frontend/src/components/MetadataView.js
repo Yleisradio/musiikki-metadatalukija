@@ -54,10 +54,20 @@ function getLabelSourcePath(metadata) {
 }
 
 const fields = [
-    { label: "Kartuntatunnus (albumi)", path: ["album", "custom", "CustomID"] },
-    { label: "Kartuntatunnus (track)", path: ["custom", "CustomID"] },
+    {
+        label: "Kartuntatunnus (albumi)",
+        path: ["album", "custom", "CustomID"],
+        updateTrackCatalogNumber: true
+    },
+    { label: "Kartuntatunnus (track)", path: ["custom", "CustomID"], disabledWithTrackNumber: true },
     { label: "Kappaleen nimi", path: ["title"], sourcePath: ["common", "title"] },
-    { label: "Uranumero", path: ["track_number"], type: "number", sourcePath: ["common", "track", "no"] },
+    {
+        label: "Uranumero",
+        path: ["track_number"],
+        type: "number",
+        sourcePath: ["common", "track", "no"],
+        updateTrackCatalogNumber: true
+    },
     { label: "Albumin nimi", path: ["album", "title"] },
     {
         label: "Esittäjän nimi",
@@ -111,6 +121,16 @@ function getValue(value, path) {
     return path.reduce((current, key) => current?.[key], value);
 }
 
+function hasTrackNumber(value) {
+    return value !== "" && value != null && Number.isFinite(Number(value));
+}
+
+function makeTrackCatalogNumber(albumCatalogNumber, trackNumber) {
+    if (!albumCatalogNumber || !hasTrackNumber(trackNumber)) return "";
+    const number = Number(trackNumber);
+    return `${albumCatalogNumber}-${number < 10 ? `0${number}` : number}`;
+}
+
 function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, onSend, isSending }) {
     const [showForm, setShowForm] = useState(true);
     const [showEdited, setShowEdited] = useState(true);
@@ -133,13 +153,25 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
         });
     };
 
-    const renderField = ({ label, path, mirrorPath, type, disabled, columnClass: fieldColumnClass, sourcePath }) => {
+    const renderField = ({
+        label,
+        path,
+        mirrorPath,
+        type,
+        disabled,
+        disabledWithTrackNumber,
+        updateTrackCatalogNumber,
+        columnClass: fieldColumnClass,
+        sourcePath
+    }) => {
         const trackPath = ["tracks", 0, ...path];
         const mirrorTrackPath = mirrorPath
             ? ["tracks", 0, ...mirrorPath]
             : undefined;
         const id = `metadata-field-${trackPath.join("-")}`;
         const value = getValue(trackMetadata, trackPath);
+        const trackNumber = getValue(trackMetadata, ["tracks", 0, "track_number"]);
+        const isDisabled = disabled || (disabledWithTrackNumber && hasTrackNumber(trackNumber));
 
         return (
             <div
@@ -154,8 +186,8 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                             className="form-check-input"
                             type="checkbox"
                             checked={Boolean(value)}
-                            disabled={disabled}
-                            title={disabled ? "Disabloitu" : undefined}
+                            disabled={isDisabled}
+                            title={isDisabled ? "Disabloitu" : undefined}
                             onFocus={() => handleFieldFocus(
                                 [trackPath, mirrorTrackPath].filter(Boolean),
                                 sourcePath
@@ -171,8 +203,8 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                         className="form-control"
                         type={type || "text"}
                         value={value ?? ""}
-                        disabled={disabled}
-                        title={disabled ? "Disabloitu" : undefined}
+                        disabled={isDisabled}
+                        title={isDisabled ? "Disabloitu" : undefined}
                         onFocus={() => handleFieldFocus(
                             [trackPath, mirrorTrackPath].filter(Boolean),
                             sourcePath
@@ -183,7 +215,21 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                     ? ""
                                     : Number(event.target.value))
                                 : event.target.value;
-                            handleFieldChange(trackPath, nextValue, mirrorTrackPath);
+                            if (updateTrackCatalogNumber) {
+                                let updatedMetadata = updateTrackValue(trackMetadata, trackPath, nextValue);
+                                const nextTrackNumber = getValue(updatedMetadata, ["tracks", 0, "track_number"]);
+                                const albumCatalogNumber = getValue(updatedMetadata, ["tracks", 0, "album", "custom", "CustomID"]);
+                                if (hasTrackNumber(nextTrackNumber) || hasTrackNumber(trackNumber)) {
+                                    updatedMetadata = updateTrackValue(
+                                        updatedMetadata,
+                                        ["tracks", 0, "custom", "CustomID"],
+                                        makeTrackCatalogNumber(albumCatalogNumber, nextTrackNumber)
+                                    );
+                                }
+                                onTrackMetadataChange(updatedMetadata);
+                            } else {
+                                handleFieldChange(trackPath, nextValue, mirrorTrackPath);
+                            }
                         }}
                     />
                 )}

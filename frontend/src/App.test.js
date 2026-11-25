@@ -131,14 +131,14 @@ test('maps file metadata to the album and track fields required for sending', ()
   expect(screen.getByLabelText('Kappaleen nimi')).toHaveValue('Test');
   expect(screen.getByLabelText('Uranumero')).toHaveValue(3);
   expect(screen.getByLabelText('Esittäjän nimi')).toHaveValue('Artist One, Artist Two');
-  expect(screen.getByLabelText('Albumin nimi')).toHaveValue(' ');
+  expect(screen.getByLabelText('Albumin nimi')).toHaveValue('');
   expect(container.querySelector('#metadata-author-name-0'))
     .toHaveValue('Songwriter');
   expect(screen.getByLabelText('Rooli')).toHaveValue('Tekijä');
   expect(screen.getByLabelText('Levy-yhtiö')).toHaveValue('Test Label');
   expect(screen.getByLabelText('Kataloginumero')).toHaveValue('Ei kataloginumeroa');
   expect(screen.getByLabelText('Kartuntatunnus (albumi)')).toHaveValue('');
-  expect(screen.getByLabelText('Kartuntatunnus (track)')).toHaveValue('');
+  expect(screen.getByLabelText('Kartuntatunnus (track)')).toBeDisabled();
   expect(screen.getByLabelText('Fennica')).not.toBeChecked();
   expect(screen.getByLabelText('Yle Master')).not.toBeChecked();
   expect(screen.getByLabelText('Fennica')).toBeEnabled();
@@ -161,7 +161,7 @@ test('maps file metadata to the album and track fields required for sending', ()
         yle_master: false
       },
       album: {
-        title: ' ',
+        title: '',
         artists_master_ownerships: [{
           artist: { full_name: 'Artist One, Artist Two' }
         }],
@@ -247,6 +247,7 @@ test('edits mapped track fields through the form', () => {
     <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
   );
 
+  expect(screen.getByLabelText('Kartuntatunnus (track)')).toBeEnabled();
   fireEvent.change(screen.getByLabelText('Kappaleen nimi'), { target: { value: 'Edited' } });
   expect(onTrackMetadataChange).toHaveBeenLastCalledWith({
     ...trackMetadata,
@@ -264,6 +265,144 @@ test('edits mapped track fields through the form', () => {
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Edited"');
   fireEvent.change(screen.getByLabelText('Kartuntatunnus (track)'), { target: { value: 'DIGI-1234-02' } });
   expect(onTrackMetadataChange.mock.lastCall[0].tracks[0].custom.CustomID).toBe('DIGI-1234-02');
+});
+
+test('builds the track catalog number from the album catalog number and track number', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: { track: { no: 9 } }
+  }));
+  const { rerender } = render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+  const trackCatalogNumber = screen.getByLabelText('Kartuntatunnus (track)');
+
+  expect(trackCatalogNumber).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Kartuntatunnus (albumi)'), {
+    target: { value: 'ALBUM-123' }
+  });
+
+  const updatedMetadata = onTrackMetadataChange.mock.lastCall[0];
+  expect(updatedMetadata.tracks[0].album.custom.CustomID).toBe('ALBUM-123');
+  expect(updatedMetadata.tracks[0].custom.CustomID).toBe('ALBUM-123-09');
+  expect(updatedMetadata.tracks[0].track_number).toBe(9);
+  rerender(
+    <MetadataView trackMetadata={updatedMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+  expect(screen.getByLabelText('Uranumero')).toHaveValue(9);
+  expect(screen.getByLabelText('Kartuntatunnus (track)')).toBeDisabled();
+
+  fireEvent.change(screen.getByLabelText('Kartuntatunnus (albumi)'), {
+    target: { value: 'ALBUM-456' }
+  });
+  expect(onTrackMetadataChange.mock.lastCall[0].tracks[0].custom.CustomID)
+    .toBe('ALBUM-456-09');
+});
+
+test('updates the track catalog number as the album ID is typed or pasted', async () => {
+  const metadata = addItunesMarker({
+    common: { title: 'Test', track: { no: 3 } }
+  });
+  parseBlob.mockResolvedValue(metadata);
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 201 });
+  renderApp();
+
+  userEvent.upload(
+    screen.getByLabelText('Valitse audiotiedosto'),
+    new File(['audio'], 'test.m4a', { type: 'audio/mp4' })
+  );
+  await screen.findByRole('tab', { name: 'Metadatan muokkaus ja lähetys' });
+  userEvent.click(screen.getByRole('tab', { name: 'Metadatan muokkaus ja lähetys' }));
+
+  const albumId = screen.getByLabelText('Kartuntatunnus (albumi)');
+  const trackId = screen.getByLabelText('Kartuntatunnus (track)');
+  for (const [character, expected] of [['A', 'A-03'], ['B', 'AB-03'], ['1', 'AB1-03']]) {
+    userEvent.type(albumId, character);
+    expect(trackId).toHaveValue(expected);
+  }
+
+  userEvent.clear(albumId);
+  expect(trackId).toHaveValue('');
+  userEvent.paste(albumId, 'PASTED-123');
+  expect(albumId).toHaveValue('PASTED-123');
+  expect(trackId).toHaveValue('PASTED-123-03');
+  expect(screen.getByLabelText('Uranumero')).toHaveValue(3);
+
+  userEvent.click(screen.getByRole('button', { name: 'Lähetä' }));
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+  const sentTrack = JSON.parse(global.fetch.mock.calls[0][1].body).tracks[0];
+  expect(sentTrack.album.custom.CustomID).toBe('PASTED-123');
+  expect(sentTrack.custom.CustomID).toBe('PASTED-123-03');
+});
+
+test('does not zero-pad track catalog numbers for track numbers of ten or more', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: { track: { no: 10 } }
+  }));
+  render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+
+  fireEvent.change(screen.getByLabelText('Kartuntatunnus (albumi)'), {
+    target: { value: 'ALBUM-123' }
+  });
+
+  expect(onTrackMetadataChange.mock.lastCall[0].tracks[0].custom.CustomID)
+    .toBe('ALBUM-123-10');
+  expect(onTrackMetadataChange.mock.lastCall[0].tracks[0].track_number).toBe(10);
+});
+
+test('updates the track catalog number when the track number changes or is cleared', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: { track: { no: 3 } }
+  }));
+  const { rerender } = render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+  const changeField = (label, value) => {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    const updated = onTrackMetadataChange.mock.lastCall[0];
+    rerender(<MetadataView trackMetadata={updated} onTrackMetadataChange={onTrackMetadataChange} />);
+    return updated.tracks[0];
+  };
+
+  expect(changeField('Kartuntatunnus (albumi)', 'ALBUM-123').custom.CustomID).toBe('ALBUM-123-03');
+  let track = changeField('Uranumero', '9');
+  expect(track.custom.CustomID).toBe('ALBUM-123-09');
+  expect(track.track_number).toBe(9);
+  expect(screen.getByLabelText('Uranumero')).toHaveValue(9);
+
+  track = changeField('Uranumero', '10');
+  expect(track.custom.CustomID).toBe('ALBUM-123-10');
+  expect(track.track_number).toBe(10);
+  expect(screen.getByLabelText('Kartuntatunnus (track)')).toBeDisabled();
+
+  track = changeField('Uranumero', '');
+  expect(track.custom.CustomID).toBe('');
+  expect(screen.getByLabelText('Kartuntatunnus (track)')).toBeEnabled();
+
+  track = changeField('Uranumero', '2');
+  expect(track.custom.CustomID).toBe('ALBUM-123-02');
+  expect(screen.getByLabelText('Kartuntatunnus (track)')).toBeDisabled();
+});
+
+test('does not keep a manual track catalog number when a track number is entered without an album ID', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: {} }));
+  const { rerender } = render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+  fireEvent.change(screen.getByLabelText('Kartuntatunnus (track)'), {
+    target: { value: 'MANUAL' }
+  });
+  rerender(
+    <MetadataView trackMetadata={onTrackMetadataChange.mock.lastCall[0]} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+  fireEvent.change(screen.getByLabelText('Uranumero'), { target: { value: '1' } });
+
+  expect(onTrackMetadataChange.mock.lastCall[0].tracks[0].custom.CustomID).toBe('');
 });
 
 test('updates the artist name on both track and album', () => {
