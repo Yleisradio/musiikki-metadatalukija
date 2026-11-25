@@ -8,6 +8,7 @@ import MetadataView from "./components/MetadataView";
 import MetadataTabs from "./components/MetadataTabs";
 import { useNotification } from "./components/Notifications";
 import { cleanText } from "./utils/metadata";
+import { getItunesComposerNames } from "./utils/metadataMappers/itunes";
 import { mapMetadataToTrack } from "./utils/trackMetadata";
 
 window.Buffer = Buffer;
@@ -19,14 +20,6 @@ function serializeMetadata(metadata) {
         }
         return value;
     }));
-}
-
-function hasItunesMetadata(metadata) {
-    return Object.values(metadata.native ?? {}).some((tags) =>
-        tags.some(({ id = "" }) =>
-            /com\.apple\.itunes/i.test(id) || /^(cnid|plid)$/i.test(id)
-        )
-    );
 }
 
 const initialCleanData = {
@@ -67,7 +60,9 @@ function App() {
 
         try {
             const parsedMetadata = await parseBlob(file);
-            if (!hasItunesMetadata(parsedMetadata)) {
+            const serializedMetadata = serializeMetadata(parsedMetadata);
+            const mappedTrackMetadata = mapMetadataToTrack(serializedMetadata);
+            if (!mappedTrackMetadata) {
                 notify("Tiedostosta ei löytynyt iTunes-lataukseen viittaavia metatietoja.", "danger");
                 return;
             }
@@ -85,24 +80,7 @@ function App() {
                 cleanText(parsedMetadata.common?.artists?.join(", ") || parsedMetadata.common?.artist) ||
                 "Tuntematon esittäjä";
 
-            let songwriterRaw = "";
-            if (parsedMetadata.native) {
-                for (const format in parsedMetadata.native) {
-                    for (const tag of parsedMetadata.native[format]) {
-                        if (tag.id.toLowerCase() === "©wrt" && typeof tag.value === "string") {
-                            songwriterRaw = cleanText(tag.value);
-                            break;
-                        }
-                    }
-                    if (songwriterRaw) break;
-                }
-            }
-            if (!songwriterRaw && parsedMetadata.common?.composer?.[0]) {
-                songwriterRaw = cleanText(parsedMetadata.common.composer[0]);
-            }
-            const songwriters = songwriterRaw
-                ? songwriterRaw.split(/,|&/).map((writer) => cleanText(writer)).filter(Boolean)
-                : [];
+            const songwriters = getItunesComposerNames(parsedMetadata);
 
             let year = parsedMetadata.common?.year;
             if (!year && parsedMetadata.native) {
@@ -207,9 +185,8 @@ function App() {
                 fileSize
             });
 
-            const serializedMetadata = serializeMetadata(parsedMetadata);
             setOriginalMetadata(serializedMetadata);
-            setTrackMetadata(mapMetadataToTrack(serializedMetadata));
+            setTrackMetadata(mappedTrackMetadata);
 
             const combinedMetadata = {
                 ...parsedMetadata,

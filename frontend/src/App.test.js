@@ -20,6 +20,16 @@ function renderApp() {
   );
 }
 
+function addItunesMarker(metadata) {
+  return {
+    ...metadata,
+    native: {
+      ...metadata.native,
+      mp4: [...(metadata.native?.mp4 ?? []), { id: 'cnID', value: 12345 }]
+    }
+  };
+}
+
 test('renders the metadata reader and audio upload instructions', () => {
   renderApp();
   expect(screen.getByRole('heading', { name: /metadatalukija/i })).toBeInTheDocument();
@@ -103,7 +113,8 @@ test('maps file metadata to the album and track fields required for sending', ()
       label: 'Test Label'
     }
   };
-  const trackMetadata = mapMetadataToTrack(metadata);
+  const trackMetadata = mapMetadataToTrack(addItunesMarker(metadata));
+  expect(trackMetadata.tracks[0].artists_publishing_ownerships[0].artist.full_name).toBe('Songwriter');
   const { container } = render(
     <MetadataView
       trackMetadata={trackMetadata}
@@ -116,9 +127,9 @@ test('maps file metadata to the album and track fields required for sending', ()
   expect(screen.getByLabelText('Uranumero')).toHaveValue(3);
   expect(screen.getByLabelText('Esittäjän nimi')).toHaveValue('Artist One, Artist Two');
   expect(screen.getByLabelText('Albumin nimi')).toHaveValue(' ');
-  expect(screen.getByLabelText('Tekijän nimi'))
+  expect(container.querySelector('#metadata-author-name-0'))
     .toHaveValue('Songwriter');
-  expect(screen.getByLabelText('Tekijän rooli')).toHaveValue('tekijä');
+  expect(screen.getByLabelText('Rooli')).toHaveValue('Tekijä');
   expect(screen.getByLabelText('Levy-yhtiö')).toHaveValue('Test Label');
   expect(screen.getByLabelText('Kartuntatunnus (albumi)')).toHaveValue('');
   expect(screen.getByLabelText('Kartuntatunnus (track)')).toHaveValue('');
@@ -136,7 +147,7 @@ test('maps file metadata to the album and track fields required for sending', ()
       }],
       artists_publishing_ownerships: [{
         artist: { full_name: 'Songwriter' },
-        rights_type: { key: 'tekijä' }
+        rights_type: { key: 'Tekijä' }
       }],
       custom: {
         CustomID: '',
@@ -163,9 +174,69 @@ test('maps file metadata to the album and track fields required for sending', ()
   expect(container.querySelector('pre')).toHaveTextContent('"title": "Test"');
 });
 
+test('parses multiple composers and lets the user add and edit authors', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: { composer: ['Stefan Burnett, Zach Hill & Andy Morin'] }
+  }));
+  const { rerender } = render(
+    <MetadataView
+      trackMetadata={trackMetadata}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+
+  expect(screen.getByRole('heading', { name: 'Tekijät' })).toBeInTheDocument();
+  expect([0, 1, 2].map((index) =>
+    document.getElementById(`metadata-author-name-${index}`).value
+  ))
+    .toEqual(['Stefan Burnett', 'Zach Hill', 'Andy Morin']);
+  expect(screen.getByRole('heading', { name: 'Tekijät' }).parentElement.parentElement)
+    .toHaveClass('border-top');
+  expect(document.getElementById('metadata-author-role-0')).toHaveValue('Tekijä');
+  expect(document.getElementById('metadata-author-role-0').querySelectorAll('option'))
+    .toHaveLength(4);
+  expect(Array.from(document.getElementById('metadata-author-role-0').options).map(({ text }) => text))
+    .toEqual(['Sanoittaja', 'Säveltäjä', 'Sovittaja', 'Tekijä']);
+
+  userEvent.click(screen.getByRole('button', { name: '+ Lisää tekijä' }));
+  rerender(
+    <MetadataView
+      trackMetadata={onTrackMetadataChange.mock.lastCall[0]}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  expect(document.getElementById('metadata-author-name-3')).toHaveValue('');
+  expect(document.getElementById('metadata-author-role-3')).toHaveValue('Tekijä');
+  fireEvent.change(document.getElementById('metadata-author-name-3'), {
+    target: { value: 'New Writer' }
+  });
+  rerender(
+    <MetadataView
+      trackMetadata={onTrackMetadataChange.mock.lastCall[0]}
+      onTrackMetadataChange={onTrackMetadataChange}
+    />
+  );
+  fireEvent.change(document.getElementById('metadata-author-role-3'), {
+    target: { value: 'Säveltäjä' }
+  });
+  const updatedAuthors = onTrackMetadataChange.mock.lastCall[0].tracks[0].artists_publishing_ownerships;
+  expect(updatedAuthors).toHaveLength(4);
+  expect(updatedAuthors[3]).toEqual({
+    artist: { full_name: 'New Writer' },
+    rights_type: { key: 'Säveltäjä' }
+  });
+});
+
+test('maps only metadata with a recognized source marker', () => {
+  expect(mapMetadataToTrack({ common: { title: 'Unrecognized source' } })).toBeNull();
+  expect(mapMetadataToTrack(addItunesMarker({ common: { title: 'iTunes source' } })))
+    .toMatchObject({ tracks: [{ title: 'iTunes source' }] });
+});
+
 test('edits mapped track fields through the form', () => {
   const onTrackMetadataChange = jest.fn();
-  const trackMetadata = mapMetadataToTrack({ common: { title: 'Original' } });
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: { title: 'Original' } }));
   const { rerender, container } = render(
     <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
   );
@@ -191,7 +262,7 @@ test('edits mapped track fields through the form', () => {
 
 test('updates the artist name on both track and album', () => {
   const onTrackMetadataChange = jest.fn();
-  const trackMetadata = mapMetadataToTrack({ common: { artists: ['Original artist'] } });
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: { artists: ['Original artist'] } }));
   render(
     <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
   );
@@ -208,7 +279,7 @@ test('updates the artist name on both track and album', () => {
 });
 
 test('renders Fennica enabled and Yle Master disabled at the end of the form on the same row', () => {
-  const trackMetadata = mapMetadataToTrack({ common: {} });
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: {} }));
   render(
     <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={jest.fn()} />
   );
@@ -230,7 +301,7 @@ test('renders Fennica enabled and Yle Master disabled at the end of the form on 
 
 test('updates Fennica on both track and album when toggled', () => {
   const onTrackMetadataChange = jest.fn();
-  const trackMetadata = mapMetadataToTrack({ common: {} });
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: {} }));
   const { rerender, container } = render(
     <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
   );
@@ -255,7 +326,7 @@ test('updates Fennica on both track and album when toggled', () => {
 test('toggles the metadata form independently of the metadata panels', () => {
   render(
     <MetadataView
-      trackMetadata={mapMetadataToTrack({ common: {} })}
+      trackMetadata={mapMetadataToTrack(addItunesMarker({ common: {} }))}
       originalMetadata={{}}
       onTrackMetadataChange={jest.fn()}
     />
@@ -281,7 +352,7 @@ test('toggles the metadata form independently of the metadata panels', () => {
 });
 
 test('uses full-width fields at the one-third desktop layout and restores the wider layout when toggled', () => {
-  const trackMetadata = mapMetadataToTrack({ common: {} });
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: {} }));
   render(<MetadataView trackMetadata={trackMetadata} originalMetadata={{}} onTrackMetadataChange={jest.fn()} />);
   const fields = screen.getByLabelText('Kappaleen nimi').closest('form').querySelectorAll('input:not([type="checkbox"])');
   const editedToggle = screen.getByRole('button', { name: 'Muokattu metadata' });
