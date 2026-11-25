@@ -178,11 +178,26 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
         const trackNumber = getValue(trackMetadata, ["tracks", 0, "track_number"]);
         const isDisabled = disabled || (disabledWithTrackNumber && hasTrackNumber(trackNumber));
         const isValidLength = !validLengths || validLengths.includes(String(value ?? "").length);
+        const focusField = () => handleFieldFocus(
+            [trackPath, mirrorTrackPath].filter(Boolean),
+            sourcePath
+        );
 
         return (
             <div
-                className={fieldColumnClass || `col-12 col-md-6${showEdited && showOriginal ? " col-xl-12" : ""}`}
+                className={`${fieldColumnClass || `col-12 col-md-6${showEdited && showOriginal ? " col-xl-12" : ""}`}${isDisabled ? " disabled-metadata-field" : ""}`}
                 key={label}
+                role={isDisabled ? "button" : undefined}
+                tabIndex={isDisabled ? 0 : undefined}
+                aria-label={isDisabled ? `${label} (disabloitu)` : undefined}
+                aria-disabled={isDisabled || undefined}
+                onClick={isDisabled ? focusField : undefined}
+                onKeyDown={isDisabled ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        focusField();
+                    }
+                } : undefined}
             >
                 <label className="form-label" htmlFor={id}>{label}</label>
                 {type === "checkbox" ? (
@@ -193,11 +208,9 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                             type="checkbox"
                             checked={Boolean(value)}
                             disabled={isDisabled}
+                            style={isDisabled ? { pointerEvents: "none" } : undefined}
                             title={isDisabled ? "Disabloitu" : undefined}
-                            onFocus={() => handleFieldFocus(
-                                [trackPath, mirrorTrackPath].filter(Boolean),
-                                sourcePath
-                            )}
+                            onFocus={focusField}
                             onChange={(event) =>
                                 handleFieldChange(trackPath, event.target.checked, mirrorTrackPath)
                             }
@@ -210,14 +223,12 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                         type={type || "text"}
                         value={value ?? ""}
                         disabled={isDisabled}
+                        style={isDisabled ? { pointerEvents: "none" } : undefined}
                         aria-invalid={!isValidLength}
                         title={isDisabled
                             ? "Disabloitu"
                             : (isValidLength ? undefined : "ISRC-koodin tulee olla 12 merkkiä pitkä tai tyhjä.")}
-                        onFocus={() => handleFieldFocus(
-                            [trackPath, mirrorTrackPath].filter(Boolean),
-                            sourcePath
-                        )}
+                        onFocus={focusField}
                         onChange={(event) => {
                             const nextValue = type === "number"
                                 ? (event.target.value === ""

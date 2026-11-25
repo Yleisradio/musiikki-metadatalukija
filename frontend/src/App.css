@@ -81,6 +81,16 @@ body {
   cursor: not-allowed !important;
 }
 
+.disabled-metadata-field {
+  cursor: pointer;
+}
+
+.disabled-metadata-field:focus-visible {
+  border-radius: var(--bs-border-radius);
+  outline: 2px solid rgba(var(--bs-primary-rgb), 0.5);
+  outline-offset: 3px;
+}
+
 .json-content {
   min-width: 0;
   max-height: min(68vh, 760px);

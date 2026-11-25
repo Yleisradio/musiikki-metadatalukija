@@ -804,6 +804,30 @@ test('highlights focused fields in edited and original metadata where their sour
   expect(container.querySelectorAll('.json-line-highlight').length).toBeGreaterThan(0);
 });
 
+test('highlights metadata paths when a disabled field is clicked', () => {
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({ common: {} }));
+  const { container } = render(
+    <MetadataView
+      trackMetadata={trackMetadata}
+      originalMetadata={{}}
+      onTrackMetadataChange={jest.fn()}
+    />
+  );
+  const disabledField = screen.getByRole('button', { name: 'Yle Master (disabloitu)' });
+
+  fireEvent.click(disabledField);
+  const editedSection = document.getElementById('edited-metadata-heading').parentElement;
+  expect(Array.from(editedSection.querySelectorAll('.json-line-highlight'))
+    .map((line) => JSON.parse(line.dataset.jsonPath)))
+    .toEqual([
+      ['tracks', 0, 'custom', 'yle_master'],
+      ['tracks', 0, 'album', 'custom', 'yle_master']
+    ]);
+
+  fireEvent.keyDown(disabledField, { key: 'Enter' });
+  expect(container.querySelectorAll('.json-line-highlight')).toHaveLength(2);
+});
+
 test('notifies when the audio file has no iTunes metadata markers', async () => {
   parseBlob
     .mockResolvedValueOnce({
