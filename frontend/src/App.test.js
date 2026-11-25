@@ -134,7 +134,8 @@ test('maps file metadata to the album and track fields required for sending', ()
   expect(screen.getByLabelText('Albumin nimi')).toHaveValue('');
   expect(container.querySelector('#metadata-author-name-0'))
     .toHaveValue('Songwriter');
-  expect(screen.getByLabelText('Rooli')).toHaveValue('Tekijä');
+  expect(screen.getByLabelText('Rooli')).toHaveValue('author');
+  expect(screen.getByLabelText('Rooli').selectedOptions[0]).toHaveTextContent('Tekijä');
   expect(screen.getByLabelText('Levy-yhtiö')).toHaveValue('Test Label');
   expect(screen.getByLabelText('Kataloginumero')).toHaveValue('Ei kataloginumeroa');
   expect(screen.getByLabelText('Kartuntatunnus (albumi)')).toHaveValue('');
@@ -153,7 +154,7 @@ test('maps file metadata to the album and track fields required for sending', ()
       }],
       artists_publishing_ownerships: [{
         artist: { full_name: 'Songwriter' },
-        rights_type: { key: 'Tekijä' }
+        rights_type: { key: 'author' }
       }],
       custom: {
         CustomID: '',
@@ -199,7 +200,7 @@ test('parses multiple composers and lets the user add and edit authors', () => {
     .toEqual(['Stefan Burnett', 'Zach Hill', 'Andy Morin']);
   expect(screen.getByRole('heading', { name: 'Tekijät' }).parentElement.parentElement)
     .toHaveClass('border-top');
-  expect(document.getElementById('metadata-author-role-0')).toHaveValue('Tekijä');
+  expect(document.getElementById('metadata-author-role-0')).toHaveValue('author');
   expect(document.getElementById('metadata-author-role-0').querySelectorAll('option'))
     .toHaveLength(4);
   expect(Array.from(document.getElementById('metadata-author-role-0').options).map(({ text }) => text))
@@ -213,7 +214,7 @@ test('parses multiple composers and lets the user add and edit authors', () => {
     />
   );
   expect(document.getElementById('metadata-author-name-3')).toHaveValue('');
-  expect(document.getElementById('metadata-author-role-3')).toHaveValue('Tekijä');
+  expect(document.getElementById('metadata-author-role-3')).toHaveValue('author');
   fireEvent.change(document.getElementById('metadata-author-name-3'), {
     target: { value: 'New Writer' }
   });
@@ -224,14 +225,41 @@ test('parses multiple composers and lets the user add and edit authors', () => {
     />
   );
   fireEvent.change(document.getElementById('metadata-author-role-3'), {
-    target: { value: 'Säveltäjä' }
+    target: { value: 'composer' }
   });
   const updatedAuthors = onTrackMetadataChange.mock.lastCall[0].tracks[0].artists_publishing_ownerships;
   expect(updatedAuthors).toHaveLength(4);
   expect(updatedAuthors[3]).toEqual({
     artist: { full_name: 'New Writer' },
-    rights_type: { key: 'Säveltäjä' }
+    rights_type: { key: 'composer' }
   });
+});
+
+test('stores author role codes while displaying Finnish labels', () => {
+  const onTrackMetadataChange = jest.fn();
+  const trackMetadata = mapMetadataToTrack(addItunesMarker({
+    common: { composer: ['Writer'] }
+  }));
+  const { rerender } = render(
+    <MetadataView trackMetadata={trackMetadata} onTrackMetadataChange={onTrackMetadataChange} />
+  );
+  const role = screen.getByLabelText('Rooli');
+
+  for (const [label, value] of [
+    ['Sanoittaja', 'lyricist'],
+    ['Säveltäjä', 'composer'],
+    ['Sovittaja', 'arranger'],
+    ['Tekijä', 'author']
+  ]) {
+    userEvent.selectOptions(role, value);
+    const updated = onTrackMetadataChange.mock.lastCall[0];
+    expect(updated.tracks[0].artists_publishing_ownerships[0].rights_type.key).toBe(value);
+    rerender(<MetadataView trackMetadata={updated} onTrackMetadataChange={onTrackMetadataChange} />);
+    expect(role).toHaveValue(value);
+    expect(role.selectedOptions[0]).toHaveTextContent(label);
+    expect(screen.getByRole('region', { name: 'Muokattu metadata' }))
+      .toHaveTextContent(`"key": "${value}"`);
+  }
 });
 
 test('maps only metadata with a recognized source marker', () => {

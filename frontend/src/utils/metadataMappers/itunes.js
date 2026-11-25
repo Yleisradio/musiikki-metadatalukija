@@ -1,4 +1,5 @@
 import { cleanText } from "../metadata";
+import { DEFAULT_AUTHOR_ROLE } from "../authorRoles";
 
 function asStringArray(value) {
     const values = Array.isArray(value) ? value : [value];
@@ -93,7 +94,7 @@ export function mapItunesMetadataToTrack(metadata) {
             }],
             artists_publishing_ownerships: composers.map((composer) => ({
                 artist: { full_name: composer },
-                rights_type: { key: "Tekijä" }
+                rights_type: { key: DEFAULT_AUTHOR_ROLE }
             })),
             custom: {
                 CustomID: "",

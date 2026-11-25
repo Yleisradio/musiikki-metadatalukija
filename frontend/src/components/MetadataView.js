@@ -1,5 +1,6 @@
 import { useState } from "react";
 import JsonMetadataPanel from "./JsonMetadataPanel";
+import { authorRoles, DEFAULT_AUTHOR_ROLE } from "../utils/authorRoles";
 
 function updateTrackValue(track, path, nextValue) {
     const [key, ...remainingPath] = path;
@@ -111,10 +112,9 @@ const fields = [
     }
 ];
 
-const authorRoles = ["Sanoittaja", "Säveltäjä", "Sovittaja", "Tekijä"];
 const newAuthor = {
     artist: { full_name: "" },
-    rights_type: { key: "Tekijä" }
+    rights_type: { key: DEFAULT_AUTHOR_ROLE }
 };
 
 function getValue(value, path) {
@@ -324,14 +324,14 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                                         <select
                                                             id={roleId}
                                                             className="form-select"
-                                                            value={getValue(trackMetadata, rolePath) || "Tekijä"}
+                                                            value={getValue(trackMetadata, rolePath) || DEFAULT_AUTHOR_ROLE}
                                                             onFocus={() => handleFieldFocus([rolePath], null)}
                                                             onChange={(event) =>
                                                                 handleFieldChange(rolePath, event.target.value)
                                                             }
                                                         >
-                                                            {authorRoles.map((role) => (
-                                                                <option key={role} value={role}>{role}</option>
+                                                            {authorRoles.map(({ label, value }) => (
+                                                                <option key={value} value={value}>{label}</option>
                                                             ))}
                                                         </select>
                                                     </div>
