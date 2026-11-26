@@ -1,17 +1,7 @@
 import { useState } from "react";
 import JsonMetadataPanel from "./JsonMetadataPanel";
 import { authorRoles, DEFAULT_AUTHOR_ROLE } from "../utils/authorRoles";
-
-function updateTrackValue(track, path, nextValue) {
-    const [key, ...remainingPath] = path;
-    const updated = Array.isArray(track) ? [...track] : { ...track };
-
-    updated[key] = remainingPath.length
-        ? updateTrackValue(track[key], remainingPath, nextValue)
-        : nextValue;
-
-    return updated;
-}
+import { getValue, hasTrackNumber, updateMetadataField } from "../utils/trackMetadataEditing";
 
 function getNativeTagValuePath(metadata, matchesTag) {
     for (const [format, tags] of Object.entries(metadata?.native ?? {})) {
@@ -119,20 +109,6 @@ const newAuthor = {
     rights_type: { key: DEFAULT_AUTHOR_ROLE }
 };
 
-function getValue(value, path) {
-    return path.reduce((current, key) => current?.[key], value);
-}
-
-function hasTrackNumber(value) {
-    return value !== "" && value != null && Number.isFinite(Number(value));
-}
-
-function makeTrackCatalogNumber(albumCatalogNumber, trackNumber) {
-    if (!albumCatalogNumber || !hasTrackNumber(trackNumber)) return "";
-    const number = Number(trackNumber);
-    return `${albumCatalogNumber}-${number < 10 ? `0${number}` : number}`;
-}
-
 function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, onSend, isSending }) {
     const [showForm, setShowForm] = useState(true);
     const [showEdited, setShowEdited] = useState(true);
@@ -141,10 +117,11 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
     const visiblePanels = Number(showForm) + Number(showEdited) + Number(showOriginal);
     const columnClass = `col-12 col-xl-${12 / Math.max(visiblePanels, 1)}`;
 
-    const handleFieldChange = (path, value, mirrorPath) => {
-        let updatedMetadata = updateTrackValue(trackMetadata, path, value);
-        if (mirrorPath) updatedMetadata = updateTrackValue(updatedMetadata, mirrorPath, value);
-        onTrackMetadataChange(updatedMetadata);
+    const handleFieldChange = (path, value, mirrorPath, updateTrackCatalogNumber) => {
+        onTrackMetadataChange(updateMetadataField(trackMetadata, path, value, {
+            mirrorPath,
+            updateTrackCatalogNumber
+        }));
     };
 
     const handleFieldFocus = (editedPaths, sourcePath) => {
@@ -244,21 +221,7 @@ function MetadataView({ trackMetadata, originalMetadata, onTrackMetadataChange, 
                                     ? nextValue.slice(emptyValueFallback.length) || emptyValueFallback
                                     : nextValue || emptyValueFallback)
                                 : nextValue;
-                            if (updateTrackCatalogNumber) {
-                                let updatedMetadata = updateTrackValue(trackMetadata, trackPath, normalizedValue);
-                                const nextTrackNumber = getValue(updatedMetadata, ["tracks", 0, "track_number"]);
-                                const albumCatalogNumber = getValue(updatedMetadata, ["tracks", 0, "album", "custom", "CustomID"]);
-                                if (hasTrackNumber(nextTrackNumber) || hasTrackNumber(trackNumber)) {
-                                    updatedMetadata = updateTrackValue(
-                                        updatedMetadata,
-                                        ["tracks", 0, "custom", "CustomID"],
-                                        makeTrackCatalogNumber(albumCatalogNumber, nextTrackNumber)
-                                    );
-                                }
-                                onTrackMetadataChange(updatedMetadata);
-                            } else {
-                                handleFieldChange(trackPath, normalizedValue, mirrorTrackPath);
-                            }
+                            handleFieldChange(trackPath, normalizedValue, mirrorTrackPath, updateTrackCatalogNumber);
                         }}
                     />
                 )}

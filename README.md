@@ -22,6 +22,14 @@ Metatiedot on vain luettavissa. Ne kopioidaan tästä sovelluksesta ja liitetä�
 - `frontend/` sisältää React-käyttöliittymän.
 - `backend/` sisältää TypeScriptillä toteutetun Node.js-taustapalvelun.
 
+Frontendin `src/App.js` koostaa näkymät. Hakemiston `src/hooks/` hookit
+hallitsevat tiedostonlukemisen ja metadatan lähetyksen tilaa sekä ilmoituksia.
+`src/services/readAudioMetadata.js` lukee audiotiedoston ja valmistelee sen
+metadatan. Hakemiston `src/utils/` funktiot muodostavat yleistiedot,
+muuntavat metadatan lähetettävään rakenteeseen ja päivittävät lomakkeen dataa.
+Komponentti- ja yksikkötestit sijaitsevat testattavien moduulien vieressä;
+`src/App.test.js` kattaa sovelluksen työnkulut.
+
 Backendissä `src/server.ts` alustaa ja käynnistää palvelimen, `src/routes.ts`
 määrittelee rajapinnat ja `src/errors.ts` käsittelee niiden virheet.
 
